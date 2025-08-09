@@ -1,0 +1,404 @@
+@import "tailwindcss";
+
+:root {
+    /* Core colors - Minimal & Clean */
+    --background: oklch(0.99 0.002 240);           /* Almost pure white with slight blue tint */
+    --foreground: oklch(0.15 0.004 240);           /* Deep charcoal for text */
+    
+    /* Surface colors */
+    --card: oklch(1 0 0);                          /* Pure white cards */
+    --card-foreground: oklch(0.15 0.004 240);      /* Same as foreground */
+    --surface: oklch(0.97 0.004 240);              /* Subtle background variation */
+    --surface-foreground: oklch(0.15 0.004 240);
+    
+    /* Primary - Professional indigo for actions */
+    --primary: oklch(0.47 0.13 260);               /* Your indigo-700 equivalent */
+    --primary-foreground: oklch(0.98 0.004 260);   /* Almost white */
+    --primary-hover: oklch(0.42 0.14 260);         /* Darker hover state */
+    --primary-light: oklch(0.95 0.025 260);        /* Light background for highlights */
+    
+    /* Secondary - Neutral grays */
+    --secondary: oklch(0.96 0.004 240);            /* Very light gray */
+    --secondary-foreground: oklch(0.35 0.006 240); /* Medium gray text */
+    --secondary-hover: oklch(0.93 0.006 240);      /* Slightly darker hover */
+    
+    /* Muted elements */
+    --muted: oklch(0.94 0.006 240);                /* Muted backgrounds */
+    --muted-foreground: oklch(0.55 0.004 240);     /* Muted text */
+    
+    /* Accent - Subtle highlights */
+    --accent: oklch(0.96 0.008 260);               /* Very light indigo */
+    --accent-foreground: oklch(0.47 0.13 260);     /* Primary color text */
+    
+    /* Financial semantic colors */
+    --income: oklch(0.64 0.15 145);                /* Green for positive amounts */
+    --income-foreground: oklch(0.96 0.03 145);
+    --income-light: oklch(0.96 0.03 145);
+    
+    --expense: oklch(0.58 0.18 25);                /* Red for negative amounts */
+    --expense-foreground: oklch(0.96 0.04 25);
+    --expense-light: oklch(0.96 0.04 25);
+    
+    --warning: oklch(0.72 0.15 70);                /* Amber for warnings */
+    --warning-foreground: oklch(0.15 0.004 240);
+    --warning-light: oklch(0.96 0.04 70);
+    
+    --info: oklch(0.60 0.12 220);                  /* Blue for information */
+    --info-foreground: oklch(0.96 0.02 220);
+    --info-light: oklch(0.96 0.02 220);
+    
+    /* UI Elements */
+    --border: oklch(0.89 0.006 240);               /* Subtle borders */
+    --border-light: oklch(0.94 0.004 240);         /* Even lighter borders */
+    --input: oklch(0.98 0.004 240);                /* Input backgrounds */
+    --ring: oklch(0.47 0.13 260);                  /* Focus rings */
+    
+    /* Typography */
+    --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    
+    /* Layout */
+    --radius: 0.5rem;                              /* Slightly rounded corners */
+    --radius-sm: 0.25rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    
+    /* Shadows - Minimal and clean */
+    --shadow-xs: 0px 1px 2px 0px oklch(0.15 0.004 240 / 0.05);
+    --shadow-sm: 0px 1px 3px 0px oklch(0.15 0.004 240 / 0.08), 0px 1px 2px -1px oklch(0.15 0.004 240 / 0.08);
+    --shadow-md: 0px 4px 6px -1px oklch(0.15 0.004 240 / 0.08), 0px 2px 4px -2px oklch(0.15 0.004 240 / 0.08);
+    --shadow-lg: 0px 10px 15px -3px oklch(0.15 0.004 240 / 0.08), 0px 4px 6px -4px oklch(0.15 0.004 240 / 0.08);
+    --shadow-xl: 0px 20px 25px -5px oklch(0.15 0.004 240 / 0.08), 0px 8px 10px -6px oklch(0.15 0.004 240 / 0.08);
+    
+    /* Spacing */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+}
+
+.dark {
+    /* Core colors - Dark mode */
+    --background: oklch(0.08 0.004 240);           /* Very dark with slight blue tint */
+    --foreground: oklch(0.95 0.004 240);           /* Almost white text */
+    
+    /* Surface colors */
+    --card: oklch(0.12 0.006 240);                 /* Dark cards */
+    --card-foreground: oklch(0.95 0.004 240);
+    --surface: oklch(0.10 0.006 240);              /* Slightly lighter than background */
+    --surface-foreground: oklch(0.95 0.004 240);
+    
+    /* Primary - Brighter in dark mode */
+    --primary: oklch(0.55 0.15 260);               /* Lighter indigo for better contrast */
+    --primary-foreground: oklch(0.08 0.004 240);   /* Dark text on primary */
+    --primary-hover: oklch(0.60 0.16 260);         /* Even lighter hover */
+    --primary-light: oklch(0.15 0.04 260);         /* Dark background for highlights */
+    
+    /* Secondary */
+    --secondary: oklch(0.16 0.006 240);            /* Dark gray */
+    --secondary-foreground: oklch(0.75 0.004 240); /* Light gray text */
+    --secondary-hover: oklch(0.20 0.006 240);      /* Lighter hover */
+    
+    /* Muted elements */
+    --muted: oklch(0.14 0.006 240);                /* Dark muted backgrounds */
+    --muted-foreground: oklch(0.60 0.004 240);     /* Lighter muted text */
+    
+    /* Accent */
+    --accent: oklch(0.15 0.008 260);               /* Dark indigo */
+    --accent-foreground: oklch(0.55 0.15 260);     /* Primary color text */
+    
+    /* Financial colors - Adjusted for dark mode */
+    --income: oklch(0.70 0.15 145);                /* Brighter green */
+    --income-foreground: oklch(0.08 0.004 240);
+    --income-light: oklch(0.15 0.04 145);
+    
+    --expense: oklch(0.65 0.18 25);                /* Brighter red */
+    --expense-foreground: oklch(0.08 0.004 240);
+    --expense-light: oklch(0.15 0.04 25);
+    
+    --warning: oklch(0.75 0.15 70);                /* Brighter amber */
+    --warning-foreground: oklch(0.08 0.004 240);
+    --warning-light: oklch(0.15 0.04 70);
+    
+    --info: oklch(0.67 0.12 220);                  /* Brighter blue */
+    --info-foreground: oklch(0.08 0.004 240);
+    --info-light: oklch(0.15 0.04 220);
+    
+    /* UI Elements */
+    --border: oklch(0.22 0.006 240);               /* Visible borders in dark */
+    --border-light: oklch(0.18 0.006 240);         /* Lighter borders */
+    --input: oklch(0.14 0.006 240);                /* Input backgrounds */
+    --ring: oklch(0.55 0.15 260);                  /* Brighter focus rings */
+    
+    /* Shadows - Darker and more prominent */
+    --shadow-xs: 0px 1px 2px 0px oklch(0.02 0 0 / 0.3);
+    --shadow-sm: 0px 1px 3px 0px oklch(0.02 0 0 / 0.4), 0px 1px 2px -1px oklch(0.02 0 0 / 0.4);
+    --shadow-md: 0px 4px 6px -1px oklch(0.02 0 0 / 0.4), 0px 2px 4px -2px oklch(0.02 0 0 / 0.4);
+    --shadow-lg: 0px 10px 15px -3px oklch(0.02 0 0 / 0.4), 0px 4px 6px -4px oklch(0.02 0 0 / 0.4);
+    --shadow-xl: 0px 20px 25px -5px oklch(0.02 0 0 / 0.4), 0px 8px 10px -6px oklch(0.02 0 0 / 0.4);
+}
+
+@theme inline {
+    /* Core theme colors */
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+    --color-surface: var(--surface);
+    --color-surface-foreground: var(--surface-foreground);
+    
+    /* Primary colors */
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+    --color-primary-hover: var(--primary-hover);
+    --color-primary-light: var(--primary-light);
+    
+    /* Secondary colors */
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+    --color-secondary-hover: var(--secondary-hover);
+    
+    /* Muted colors */
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+    
+    /* Accent colors */
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+    
+    /* Financial semantic colors */
+    --color-income: var(--income);
+    --color-income-foreground: var(--income-foreground);
+    --color-income-light: var(--income-light);
+    
+    --color-expense: var(--expense);
+    --color-expense-foreground: var(--expense-foreground);
+    --color-expense-light: var(--expense-light);
+    
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-warning-light: var(--warning-light);
+    
+    --color-info: var(--info);
+    --color-info-foreground: var(--info-foreground);
+    --color-info-light: var(--info-light);
+    
+    /* UI Elements */
+    --color-border: var(--border);
+    --color-border-light: var(--border-light);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+    
+    /* Typography */
+    --font-sans: var(--font-sans);
+    --font-mono: var(--font-mono);
+    
+    /* Border radius */
+    --radius-sm: var(--radius-sm);
+    --radius: var(--radius);
+    --radius-lg: var(--radius-lg);
+    --radius-xl: var(--radius-xl);
+    
+    /* Shadows */
+    --shadow-xs: var(--shadow-xs);
+    --shadow-sm: var(--shadow-sm);
+    --shadow: var(--shadow-sm);
+    --shadow-md: var(--shadow-md);
+    --shadow-lg: var(--shadow-lg);
+    --shadow-xl: var(--shadow-xl);
+    
+    /* Spacing scale */
+    --space-1: var(--space-1);
+    --space-2: var(--space-2);
+    --space-3: var(--space-3);
+    --space-4: var(--space-4);
+    --space-6: var(--space-6);
+    --space-8: var(--space-8);
+}
+
+/* Expense Platform Utility Classes */
+@layer utilities {
+    /* Amount styling utilities */
+    .amount-positive {
+        color: var(--color-income);
+    }
+    
+    .amount-negative {
+        color: var(--color-expense);
+    }
+    
+    .amount-zero {
+        color: var(--color-muted-foreground);
+    }
+    
+    /* Surface utilities */
+    .surface {
+        background-color: var(--color-surface);
+        color: var(--color-surface-foreground);
+    }
+    
+    /* Financial card styles */
+    .card-income {
+        background-color: var(--color-income-light);
+        border: 1px solid var(--color-income);
+        color: var(--color-income);
+    }
+    
+    .card-expense {
+        background-color: var(--color-expense-light);
+        border: 1px solid var(--color-expense);
+        color: var(--color-expense);
+    }
+    
+    /* Enhanced focus styles for financial inputs */
+    .input-financial {
+        background-color: var(--color-input);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius);
+        transition: all 0.2s ease;
+    }
+    
+    .input-financial:focus {
+        outline: none;
+        border-color: var(--color-ring);
+        box-shadow: 0 0 0 2px var(--color-ring);
+    }
+}
+
+/* Component-specific styles */
+@layer components {
+    .expense-form {
+        background-color: var(--color-card);
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .expense-item {
+        background-color: var(--color-card);
+        border: 1px solid var(--color-border-light);
+        border-radius: var(--radius);
+        transition: all 0.2s ease;
+    }
+    
+    .expense-item:hover {
+        box-shadow: var(--shadow-md);
+        border-color: var(--color-border);
+    }
+    
+    .navbar-expense {
+        background-color: var(--color-primary);
+        color: var(--color-primary-foreground);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-primary-expense {
+        background-color: var(--color-primary);
+        color: var(--color-primary-foreground);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow-xs);
+        transition: all 0.2s ease;
+    }
+    
+    .btn-primary-expense:hover {
+        background-color: var(--color-primary-hover);
+        box-shadow: var(--shadow-sm);
+    }
+    
+    .btn-primary-expense:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px var(--color-ring);
+    }
+}
+
+
+
+
+/*calendar styles */
+
+.calender {
+  z-index: 1000;
+  position: absolute;
+  z-index: 9999 !important; /* Make sure it appears above other elements */
+  background: #fff;
+  border: 1px solid #1976d2;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  padding: 10px;
+  cursor: pointer;
+}
+
+.calendar-controller {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.month-day {
+  text-align: center;
+
+  /* background-color: #007bff */
+}
+
+.month-day:hover {
+  background-color: #dedede;
+  color: white;
+  border-radius: 50%;
+}
+
+.month-day.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+.date-indicator {
+  width: 50%;
+  display: flex;
+  justify-content: space-between;
+}
+
+.control.month {
+  border: #d6d3d3 solid 1px;
+  border-radius: 4px;
+  padding: 1px;
+  margin: 5px;
+  /* background-color: #f8f9fa; */
+  transition: background-color 0.2s ease-in-out;
+}
+.control.year {
+  border: #d6d3d3 solid 1px;
+  border-radius: 4px;
+  padding: 1px;
+  margin: 5px;
+  /* background-color: #f8f9fa; */
+  transition: background-color 0.2s ease-in-out;
+}
+.control.icon :hover {
+  /* border: rgb(110, 109, 109) 1px solid; */
+  background-color: #eae8e8;
+}
+
+.option-wrapper {
+  padding: 0;
+  position: absolute;
+  margin-top: 4px;
+  background: white;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  max-height: 150px; /* controls visible height */
+  overflow-y: auto; /* enables scrolling */
+  width: 120px; /* match control if needed */
+  z-index: 999;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.drop-down ul {
+  list-style: none;
+  padding: 5px;
+}
+
+.drop-down ul :hover {
+  background-color: #e4e5e6;
+}
