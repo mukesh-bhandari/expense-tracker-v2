@@ -1,4 +1,4 @@
-const pool = require("../config/db")
+const pool = require("../config/db");
 
 const router = express.Router();
 
@@ -23,4 +23,18 @@ router.post("/create-room", async (req, res) => {
   }
 });
 
+router.post("/my-rooms", async (req, res) => {
+  const userId = req.user.id;
+  try {
+    const result = await pool.query(
+      "SELECT room_id FROM room_members WHERE user_id = $1",
+      [userId]
+    );
+    
+    // get the rooms form roomid 
+  
+  } catch (error) {
+    res.status(500).json({ error: "error getting users rooms" });
+  }
+});
 module.exports = router;
