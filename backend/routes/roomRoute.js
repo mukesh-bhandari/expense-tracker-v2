@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const express = require("express");
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ router.post("/create-room", async (req, res) => {
       "INSERT INTO rooms (name) VALUES ($1) RETURNING *",
       [name]
     );
-    room = result.rows[0];
+    const room = result.rows[0];
     await pool.query(
       "INSERT INTO room_members (room_id, user_id) VALUES ($1, $2)",
       [room.id, userId]
@@ -30,11 +31,30 @@ router.post("/my-rooms", async (req, res) => {
       "SELECT room_id FROM room_members WHERE user_id = $1",
       [userId]
     );
-    
-    // get the rooms form roomid 
-  
+
+    // get the rooms form roomid
   } catch (error) {
     res.status(500).json({ error: "error getting users rooms" });
+  }
+});
+
+router.post("/:roomId/members", async (req, res) => {
+  const { roomId } = req.params;
+  const userId = req.user.id;
+
+  try {
+    const result = await pool.query(
+      `SELECT u.user_id, u.username 
+       FROM users u
+       JOIN room_members rm ON u.user_id = rm.user_id
+       WHERE rm.room_id = $1`,
+      [roomId]
+    );
+
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching room members:", error);
+    res.status(500).json({ error: "Error fetching room members" });
   }
 });
 module.exports = router;

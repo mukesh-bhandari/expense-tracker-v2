@@ -7,8 +7,9 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const authRoute = require("./routes/authRoute");
-
-
+const inviteRoute = require("./routes/inviteRoute");
+const roomRoute = require("./routes/roomRoute");
+const expenseRoute = require("./routes/expenseRoute")
 const crypto = require("crypto");
 
 app.use(
@@ -28,7 +29,8 @@ pool.on("error", (err) => {
 
 app.use("/api/auth", authRoute);
 app.use("/api/invite", inviteRoute);
-app.use("/api/room", inviteRoute);
+app.use("/api/room", roomRoute);
+app.use("/api/expense", expenseRoute)
 
 app.listen(5000, () => {
   console.log("server running on port 5000");

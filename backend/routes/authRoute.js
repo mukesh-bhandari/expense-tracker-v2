@@ -1,5 +1,5 @@
 const express = require("express");
-const pool = require("./config/db");
+const pool = require("../config/db");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
 const { sendVerificationEmail } = require("../services/emailService");
@@ -184,5 +184,25 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ message: "Error login in" });
   }
 });
+
+router.post("/logout", async (req, res) => {
+  try {
+    res.clearCookie("accessToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+    });
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+    });
+    res.json({ message: "Logout successful" });
+  } catch (error) {
+    console.error("Error during logout:", error);
+    res.status(500).json({ message: "Logout failed" });
+  }
+});
+
 
 module.exports = router;
