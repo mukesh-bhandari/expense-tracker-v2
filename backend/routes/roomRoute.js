@@ -1,9 +1,9 @@
 const pool = require("../config/db");
 const express = require("express");
-
+const authenticateUser = require("../middleware/auth")
 const router = express.Router();
 
-router.post("/create-room", async (req, res) => {
+router.post("/create-room", authenticateUser, async (req, res) => {
   const userId = req.user.id;
   const { name } = req.body;
   try {
@@ -13,18 +13,19 @@ router.post("/create-room", async (req, res) => {
       [name]
     );
     const room = result.rows[0];
+    
     await pool.query(
       "INSERT INTO room_members (room_id, user_id) VALUES ($1, $2)",
       [room.id, userId]
     );
 
-    return res.json({ message: "room created" });
+    return res.json({data: room });
   } catch (error) {
     res.status(500).json({ error: "error creating room" });
   }
 });
 
-router.post("/my-rooms", async (req, res) => {
+router.get("/my-rooms", authenticateUser, async (req, res) => {
   const userId = req.user.id;
   try {
     const result = await pool.query(
@@ -33,20 +34,21 @@ router.post("/my-rooms", async (req, res) => {
     );
 
     // get the rooms form roomid
+    res.json(result.rows)
   } catch (error) {
     res.status(500).json({ error: "error getting users rooms" });
   }
 });
 
-router.post("/:roomId/members", async (req, res) => {
+router.get("/:roomId/members",  async (req, res) => {
   const { roomId } = req.params;
-  const userId = req.user.id;
+  
 
   try {
     const result = await pool.query(
-      `SELECT u.user_id, u.username 
+      `SELECT u.id, u.username 
        FROM users u
-       JOIN room_members rm ON u.user_id = rm.user_id
+       JOIN room_members rm ON u.id = rm.user_id
        WHERE rm.room_id = $1`,
       [roomId]
     );
@@ -57,4 +59,5 @@ router.post("/:roomId/members", async (req, res) => {
     res.status(500).json({ error: "Error fetching room members" });
   }
 });
+
 module.exports = router;

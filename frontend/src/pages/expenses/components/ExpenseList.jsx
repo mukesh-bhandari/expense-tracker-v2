@@ -1,22 +1,22 @@
 import React from "react";
 import { useEffect, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCheck, faUser, faClock, faEdit } from "@fortawesome/free-solid-svg-icons";
+import {
+  faCheck,
+  faUser,
+  faClock,
+  faEdit,
+} from "@fortawesome/free-solid-svg-icons";
 import { useNavigate } from "react-router-dom";
 
 function ExpenseList({
   persons = ["mukesh", "aadarsh", "kushal", "niraj"],
-  expenses = [], // Now received as prop from parent
-  onExpensesUpdate, // Callback to update expenses in parent
-  
-  // ===== MODAL CALLBACK PROPS =====
-  // These are callback functions that this component calls to tell parent to open modals
-  onOpenBalanceSheet, // Called when "View Balances" button is clicked
-  onOpenEditModal,    // Called when "Edit" button is clicked
+  expenses = [],
+  onExpensesUpdate,
+  onOpenBalanceSheet,
+  onOpenEditModal,
 }) {
   const [isSaving, setIsSaving] = useState(false);
-  
-
 
   function handleButtonClick(expenseId, person) {
     // Update expenses and call parent callback to sync state
@@ -26,30 +26,30 @@ function ExpenseList({
           ...expense.buttonstates,
           [person]: !expense.buttonstates[person],
         };
-        
+
         // If we have custom amounts (manually edited)
         if (expense.amounts) {
           const isBeingSkipped = !expense.buttonstates[person]; // Will be skipped after toggle
-          
+
           if (isBeingSkipped) {
             // Person is being skipped - redistribute their amount equally to others
             const newAmounts = { ...expense.amounts };
             const personAmount = newAmounts[person] || 0;
             newAmounts[person] = 0;
-            
+
             // Find non-skipped persons (excluding the one being skipped)
-            const nonSkippedPersons = persons.filter(p => 
-              p !== person && !newButtonStates[p]
+            const nonSkippedPersons = persons.filter(
+              (p) => p !== person && !newButtonStates[p]
             );
-            
+
             if (nonSkippedPersons.length > 0 && personAmount > 0) {
               const redistribution = personAmount / nonSkippedPersons.length;
-              nonSkippedPersons.forEach(p => {
+              nonSkippedPersons.forEach((p) => {
                 newAmounts[p] = (newAmounts[p] || 0) + redistribution;
                 newAmounts[p] = Math.round(newAmounts[p] * 100) / 100; // Round to 2 decimals
               });
             }
-            
+
             return {
               ...expense,
               buttonstates: newButtonStates,
@@ -61,7 +61,7 @@ function ExpenseList({
               ...expense,
               buttonstates: newButtonStates,
             };
-            
+
             // ===== CALLBACK TO PARENT INSTEAD OF MANAGING MODAL =====
             // Instead of: setIsEditModalOpen(true) and setEditingExpense(expense)
             // We call the parent's callback function
@@ -69,11 +69,11 @@ function ExpenseList({
               console.log("🔄 Calling parent's onOpenEditModal callback");
               onOpenEditModal(updatedExpense);
             }, 0);
-            
+
             return updatedExpense;
           }
         }
-        
+
         return {
           ...expense,
           buttonstates: newButtonStates,
@@ -99,7 +99,7 @@ function ExpenseList({
           }
         : expense
     );
-    
+
     // ===== UPDATE PARENT STATE =====
     onExpensesUpdate(updatedExpenses);
   }
@@ -115,15 +115,16 @@ function ExpenseList({
   const handleSaveButton = async () => {
     if (isSaving) return;
     setIsSaving(true);
-    
+
     const payLoad = expenses.map((expense) => {
       const buttonStateForExpense = {};
       const checkboxStateforExpense = {};
       const transactionCompletePerPerson = {};
-      
+
       persons.forEach((person) => {
         buttonStateForExpense[person] = expense.buttonstates[person] || false;
-        checkboxStateforExpense[person] = expense.checkboxstates[person] || false;
+        checkboxStateforExpense[person] =
+          expense.checkboxstates[person] || false;
 
         if (
           expense.buttonstates[person] == true ||
@@ -169,7 +170,6 @@ function ExpenseList({
     navigate("/expenses");
   };
 
-  // ===== CALCULATE TRANSACTIONS FOR BALANCE SHEET =====
 
   function transactionPerExpense() {
     const transactions = [];
@@ -252,9 +252,8 @@ function ExpenseList({
 
   const netTransactions = calculateTransactions(transactions);
 
-  // ===== HANDLE VIEW BALANCES CLICK =====
-  const handleViewBalancesClick = () => {
 
+  const handleViewBalancesClick = () => {
     console.log("🔄 Calling parent's onOpenBalanceSheet callback");
     onOpenBalanceSheet(netTransactions);
   };
@@ -315,12 +314,17 @@ function ExpenseList({
 
           <div className="space-y-0">
             {expenses.map((expense, index) => (
-              <div key={index} className="bg-card border-b border-border-light p-4 last:border-b-0">
+              <div
+                key={index}
+                className="bg-card border-b border-border-light p-4 last:border-b-0"
+              >
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                   {/* Expense Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-medium text-foreground">{expense.item}</h3>
+                      <h3 className="font-medium text-foreground">
+                        {expense.item}
+                      </h3>
                       <span className="amount-negative font-semibold">
                         NPR {parseFloat(expense.price).toFixed(2)}
                       </span>
@@ -334,7 +338,10 @@ function ExpenseList({
                     </div>
                     <p className="text-sm text-muted-foreground flex items-center gap-1">
                       <FontAwesomeIcon icon={faUser} className="text-xs" />
-                      Paid by <span className="font-medium capitalize">{expense.paidBy}</span>
+                      Paid by{" "}
+                      <span className="font-medium capitalize">
+                        {expense.paidBy}
+                      </span>
                     </p>
                   </div>
 
@@ -342,40 +349,49 @@ function ExpenseList({
                   <div className="flex flex-wrap gap-2 justify-start">
                     {persons.map((person) => {
                       // Check both button state and custom amounts for skip status
-                      const isExcluded = expense.buttonstates[person] || (expense.amounts && expense.amounts[person] === 0);
+                      const isExcluded =
+                        expense.buttonstates[person] ||
+                        (expense.amounts && expense.amounts[person] === 0);
                       const isPaid = expense.checkboxstates[person];
-                      
+
                       return (
                         <div key={person} className="relative">
                           <button
                             className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 min-w-[100px] justify-center ${
                               isExcluded
-                                ? 'bg-muted text-muted-foreground border border-border'
+                                ? "bg-muted text-muted-foreground border border-border"
                                 : isPaid
-                                ? 'card-income text-income'
-                                : 'card-expense text-expense'
+                                ? "card-income text-income"
+                                : "card-expense text-expense"
                             }`}
-                            onClick={() => handleButtonClick(expense.id_, person)}
+                            onClick={() =>
+                              handleButtonClick(expense.id_, person)
+                            }
                           >
                             <span className="capitalize">{person}</span>
                             {isExcluded && (
                               <span className="text-xs opacity-75">Skip</span>
                             )}
                           </button>
-                          
+
                           {!isExcluded && (
                             <button
                               className={`absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                                 isPaid
-                                  ? 'bg-income border-income text-income-foreground'
-                                  : 'bg-card border-border hover:border-primary'
+                                  ? "bg-income border-income text-income-foreground"
+                                  : "bg-card border-border hover:border-primary"
                               }`}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleCheckBoxClick(expense.id_, person);
                               }}
                             >
-                              {isPaid && <FontAwesomeIcon icon={faCheck} className="text-xs" />}
+                              {isPaid && (
+                                <FontAwesomeIcon
+                                  icon={faCheck}
+                                  className="text-xs"
+                                />
+                              )}
                             </button>
                           )}
                         </div>
@@ -388,8 +404,6 @@ function ExpenseList({
           </div>
         </div>
       )}
-
-  
 
       {/* Navigation Button */}
       <div className="hidden justify-center pt-4">

@@ -3,7 +3,7 @@ const jwt = require("jsonwebtoken");
 
 const authenticateUser = async (req, res, next) => {
   const token = req.cookies?.accessToken;
-  // console.log("Token:", token);
+  console.log("Token:", token);
   if (!token) {
     return res.status(401).json({ error: "not authorized" });
   }
@@ -38,7 +38,7 @@ const authenticateUser = async (req, res, next) => {
         const user = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
         console.log("new access token created ");
         const newAccessToken = jwt.sign(
-          { username: user.username },
+          { id: user.id, username: user.username },
           process.env.ACCESS_TOKEN_SECRET,
           { expiresIn: "15m" }
         );
@@ -68,4 +68,4 @@ const authenticateUser = async (req, res, next) => {
   }
 };
 
-module.exports = {authenticateUser}
+module.exports = authenticateUser

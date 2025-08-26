@@ -1,4 +1,4 @@
-const transporter = require("../config/mail");
+const {transporter} = require("../config/mail");
 
 function sendVerificationEmail(email, code) {
   return transporter.sendMail({

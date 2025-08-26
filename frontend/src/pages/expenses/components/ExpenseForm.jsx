@@ -1,33 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { NepaliDatePicker } from "nepali-datepicker-reactjs";
 
-function ExpenseForm({ onAddExpense, roomId }) {
+function ExpenseForm({ members, onAddExpense }) {
   const [item, setItem] = useState("");
   const [price, setPrice] = useState("");
-  const [paidBy, setPaidBy] = useState("");
+  const [paidBy, setPaidBy] = useState(0);
   const [date, setDate] = useState("");
   const [isAdding, setIsAdding] = useState(false);
-  const [members, setMembers] = useState([]);
-
-  useEffect(() => {
-    const fetchRoomMembers = async () => {
-      try {
-        const response = await fetch(`/api/rooms/${roomId}/members`, {
-          credentials: "include",
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setMembers(data);
-        }
-      } catch (error) {
-        console.error("Error fetching room members:", error);
-      }
-    };
-
-    if (roomId) {
-      fetchRoomMembers();
-    }
-  }, [roomId]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -127,7 +106,7 @@ function ExpenseForm({ onAddExpense, roomId }) {
             <select
               id="paidBy"
               value={paidBy}
-              onChange={(e) => setPaidBy(e.target.value)}
+              onChange={(e) => setPaidBy(Number(e.target.value))}
               required
               className="input-financial w-full px-4 py-3 text-sm font-medium"
             >
@@ -135,9 +114,11 @@ function ExpenseForm({ onAddExpense, roomId }) {
                 Select person
               </option>
               {members.map((member) => {
-                <option key={member.user_id} value={member.user_id}>
-                  {member.username}
-                </option>;
+                return (
+                  <option key={member.user_id} value={member.user_id}>
+                    {member.username}
+                  </option>
+                );
               })}
             </select>
           </div>

@@ -18,7 +18,7 @@ function Login() {
     setError("");
 
     try {
-      const response = await fetch("/api/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
@@ -27,7 +27,7 @@ function Login() {
       const data = await response.json();
       
       if (response.ok) {
-        navigate("/");
+        navigate("/dashboard");
       } else {
         setError(data.message || "Login failed. Please try again.");
       }

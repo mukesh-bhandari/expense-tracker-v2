@@ -27,16 +27,18 @@ function WelcomePage() {
       });
 
       if (response.ok) {
+        const data = await response.json();
+        navigate("/expenses", { state: { roomId: data.room.id } });
         setSuccess("Room created successfully! Now invite your team members.");
       } else {
         setError(data.message || "Failed to create room. Please try again.");
       }
     } catch (error) {
-      console.error("Error creating room:", error);
+      console.log("Error creating room:", error);
       setError("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
-      navigate("/epxenses");
+      
     }
   };
 
@@ -82,7 +84,7 @@ function WelcomePage() {
           </div>
         </div>
         <div>
-          <button onClick={setShowRoomDialog(true)}>create room</button>
+          <button onClick={() => setShowRoomDialog(true)}>create room</button>
         </div>
       </div>
 

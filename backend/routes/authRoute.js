@@ -3,6 +3,8 @@ const pool = require("../config/db");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
 const { sendVerificationEmail } = require("../services/emailService");
+const bcrypt = require("bcrypt")
+const crypto = require("crypto")
 
 // Send verification code
 router.post("/send-code", async (req, res) => {
@@ -91,22 +93,22 @@ router.post("/signup", async (req, res) => {
 
     const user = result.rows[0];
     const accessToken = jwt.sign(
-      { id: user.id_, username: user.username },
+      { id: user.id, username: user.username },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: "15m" }
     );
     const refreshToken = jwt.sign(
-      { id: user.id_, username: user.username },
+      { id: user.id, username: user.username },
       process.env.REFRESH_TOKEN_SECRET,
       { expiresIn: "7d" }
     );
     await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [
-      user.id_,
+      user.id,
     ]);
 
     await pool.query(
       "INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2) ON CONFLICT (token) DO NOTHING",
-      [user.id_, refreshToken]
+      [user.id, refreshToken]
     );
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
@@ -146,22 +148,22 @@ router.post("/login", async (req, res) => {
       }
 
       const accessToken = jwt.sign(
-        { id: user.id_, username: user.username },
+        { id: user.id, username: user.username },
         process.env.ACCESS_TOKEN_SECRET,
         { expiresIn: "15m" }
       );
       const refreshToken = jwt.sign(
-        { id: user.id_, username: user.username },
+        { id: user.id, username: user.username },
         process.env.REFRESH_TOKEN_SECRET,
         { expiresIn: "7d" }
       );
       await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [
-        user.id_,
+        user.id,
       ]);
 
       await pool.query(
         "INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2) ON CONFLICT (token) DO NOTHING",
-        [user.id_, refreshToken]
+        [user.id, refreshToken]
       );
 
       res.cookie("accessToken", accessToken, {

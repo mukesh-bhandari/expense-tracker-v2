@@ -29,8 +29,8 @@ pool.on("error", (err) => {
 
 app.use("/api/auth", authRoute);
 app.use("/api/invite", inviteRoute);
-app.use("/api/room", roomRoute);
-app.use("/api/expense", expenseRoute)
+app.use("/api/rooms", roomRoute);
+app.use("/api/expenses", expenseRoute)
 
 app.listen(5000, () => {
   console.log("server running on port 5000");

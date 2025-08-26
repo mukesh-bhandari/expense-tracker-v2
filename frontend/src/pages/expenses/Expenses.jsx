@@ -1,20 +1,66 @@
 import React, { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHome } from "@fortawesome/free-solid-svg-icons";
-import ExpenseList from "./ExpenseList";
-import BalanceSheet from "./BalanceSheet";
-import ExpenseEditModal from "./ExpenseEditModal";
+import ExpenseList from "./components/ExpenseList";
+import BalanceSheet from "./components/BalanceSheet";
+import ExpenseEditModal from "./components/EditModal";
+import ExpenseForm from "./components/ExpenseForm";
+import { useLocation } from "react-router-dom";
 
 function Expenses() {
+  const location = useLocation;
+  const roomId = location.state?.roomId;
+  const [members, setMembers] = useState([]);
+  const [selectedRoomId, setSelectedRoomId] = useState(0);
+
   const [isBalanceSheetOpen, setIsBalanceSheetOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   // Store which expense is being edited (moved up from ExpenseList)
   const [editingExpense, setEditingExpense] = useState(null);
-  
+
   // Store expenses data (this would come from your data source)
   const [expenses, setExpenses] = useState([]);
   const [netTransactions, setNetTransactions] = useState({});
+
+  useEffect(() => {
+    if (roomId) {
+      setSelectedRoomId(roomId);
+    }
+    const fetchRoomMembers = async () => {
+      try {
+        const response = await fetch(`/api/rooms/${roomId}/members`, {
+          //roomid here
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setMembers(data);
+        }
+      } catch (error) {
+        console.error("Error fetching room members:", error);
+      }
+    };
+
+    const fetchExpenses = async () => {
+      try {
+        const response = await fetch(`api/expenses/${roomId}/get-expenses`, {
+          credentials: "include",
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setExpenses(data);
+        }
+      } catch (error) {
+        console.log("Error fetching expenses:", error);
+      }
+    };
+    if (roomId) {
+      // roomid here
+      fetchRoomMembers();
+      fetchExpenses();
+    }
+  }, [roomId]);
 
   /**
    * CALLBACK: ExpenseList calls this when user clicks "View Balances" button
@@ -25,7 +71,7 @@ function Expenses() {
     setNetTransactions(transactions); // Store the transactions data
     setIsBalanceSheetOpen(true); // Open the modal
   };
-  
+
   /**
    * CALLBACK: ExpenseList calls this when user clicks "Edit" button on an expense
    * @param {Object} expense - The expense object to edit
@@ -35,7 +81,7 @@ function Expenses() {
     setEditingExpense(expense); // Store which expense to edit
     setIsEditModalOpen(true); // Open the modal
   };
-  
+
   /**
    * CALLBACK: ExpenseList calls this to update expenses data
    * @param {Array} updatedExpenses - The new expenses array
@@ -114,6 +160,11 @@ function Expenses() {
     setExpenses(updatedExpenses);
   };
 
+  const handleAddExpense = (expenses) => {
+    const updatedExpenses = [...expenses, expenses];
+    setExpenses(updatedExpenses);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="relative">
@@ -137,9 +188,14 @@ function Expenses() {
         </nav>
 
         {/* Main Content Area */}
+        <ExpenseForm
+          members={members}
+          onAddExpense={handleAddExpense}
+        ></ExpenseForm>
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <ExpenseList
-            persons={["mukesh", "aadarsh", "kushal", "niraj"]}
+            persons={members}
             expenses={expenses}
             onExpensesUpdate={handleExpensesUpdate}
             // {/* MODAL CALLBACK PROPS - ExpenseList calls these to open modals */}
@@ -161,7 +217,7 @@ function Expenses() {
           {isEditModalOpen && editingExpense && (
             <ExpenseEditModal
               expense={editingExpense}
-              persons={["mukesh", "aadarsh", "kushal", "niraj"]}
+              persons={members}
               onClose={handleCloseEditModal}
               onSave={handleSaveExpenseAmounts}
               onUpdateButtonStates={(expenseId, person, isSkipped) => {

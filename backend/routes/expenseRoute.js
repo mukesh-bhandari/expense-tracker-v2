@@ -46,10 +46,32 @@ router.post("/add-expense", async (req, res) => {
       )
     );
 
+    // expenses for frontend
+    const expenseDetailsResult = await pool.query(
+      `SELECT e.id, e.room_id, e.item, e.price, e.paid_by, e.bs_date, u.username AS paid_by_username
+       FROM expenses e
+       JOIN users u ON e.paid_by = u.id
+       WHERE e.id = $1`,
+      [expense.id]
+    );
+
+    const splitsResult = await pool.query(
+      `SELECT es.id, es.expense_id, es.user_id, es.amount_owed, es.is_paid, u.username AS user_username
+       FROM expense_shares es
+       JOIN users u ON es.user_id = u.id
+       WHERE es.expense_id = $1`,
+      [expense.id]
+    );
+
+    const newExpense = {
+      ...expenseDetailsResult.rows[0],
+      splits: splitsResult.rows,
+    };
+
     await pool.query("COMMIT");
     res.status(200).json({
       message: "Expense added successfully",
-      expense: expense,
+      expense: newExpense,
     });
   } catch (error) {
     await pool.query("ROLLBACK");
@@ -78,9 +100,9 @@ router.get("/:roomId/get-expenses", async (req, res) => {
       WHERE es.expense_id = ANY($1)`,
       [expenseIds]
     );
-    
-     if (expenseIds.length === 0) {
-      return res.json([]); 
+
+    if (expenseIds.length === 0) {
+      return res.json([]);
     }
 
     const expensesWithSplits = expensesResult.rows.map((expense) => ({
@@ -96,22 +118,24 @@ router.get("/:roomId/get-expenses", async (req, res) => {
   }
 });
 
-router.post("/:roomId/save-states", async (req, res)=>{
-const {splits} = req.body;
+router.post("/:roomId/save-states", async (req, res) => {
+  const { splits } = req.body;
 
-try{
-      // Update all splits
-    await Promise.all(splits.map(split => 
-      pool.query(
-        `UPDATE expense_splits SET amount_owed = $1, is_paid = $2 
+  try {
+    // Update all splits
+    await Promise.all(
+      splits.map((split) =>
+        pool.query(
+          `UPDATE expense_splits SET amount_owed = $1, is_paid = $2 
          WHERE expense_id = $3 AND user_id = $4`,
-        [split.amount, split.isPaid, expenseId, split.userId]
+          [split.amount, split.isPaid, expenseId, split.userId]
+        )
       )
-    ));
+    );
 
     res.json({ message: "Updated" });
-}catch(error){
-res.status(500).json({ error: "Failed" });
-}
-})
+  } catch (error) {
+    res.status(500).json({ error: "Failed" });
+  }
+});
 module.exports = router;

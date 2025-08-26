@@ -61,7 +61,7 @@ function Signup() {
     }
 
     try {
-      const response = await fetch("/api/send-code", {
+      const response = await fetch("/api/auth/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -118,7 +118,7 @@ function Signup() {
     }
 
     try {
-      const response = await fetch("/api/verify-code", {
+      const response = await fetch("/api/auth/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code: otpCode }),
@@ -144,7 +144,7 @@ function Signup() {
     setError("");
 
     try {
-      const response = await fetch("/api/send-otp", {
+      const response = await fetch("/api/auth/send-otp", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
@@ -180,7 +180,7 @@ function Signup() {
     }
 
     try {
-      const response = await fetch("/api/signup", {
+      const response = await fetch("/api/auth/signup", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
