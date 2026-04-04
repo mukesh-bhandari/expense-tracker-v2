@@ -1,110 +1,303 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHome, faStar } from "@fortawesome/free-solid-svg-icons";
+import { faPlus, faUserPlus, faSpinner, faUsers, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 function WelcomePage() {
-  const [showRoomDialog, setShowRoomDialog] = useState(false);
-  const [roomName, setRoomName] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [rooms, setRooms] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [selectedRoomId, setSelectedRoomId] = useState(null);
+  const [roomName, setRoomName] = useState("");
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+  const [isInviting, setIsInviting] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState("");
   const navigate = useNavigate();
+
+  // Fetch user's rooms on mount
+  useEffect(() => {
+    fetchRooms();
+  }, []);
+
+  const fetchRooms = async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const response = await fetch("/api/rooms/my-rooms", {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log("Fetched rooms:", data);
+        setRooms(data);
+      } else {
+        setError("Failed to load rooms. Please try again.");
+      }
+    } catch (err) {
+      console.error("Error fetching rooms:", err);
+      setError("Network error. Please check your connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateRoom = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (!roomName.trim()) {
+      setError("Room name cannot be empty");
+      return;
+    }
+
+    setIsCreating(true);
     setError("");
 
     try {
-      const response = await fetch("/api/room/create-room", {
+      const response = await fetch("/api/rooms/create-room", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: roomName,
-        }),
+        body: JSON.stringify({ name: roomName }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        navigate("/expenses", { state: { roomId: data.room.id } });
-        setSuccess("Room created successfully! Now invite your team members.");
+        setRooms([...rooms, data.data]);
+        setRoomName("");
+        setShowCreateDialog(false);
       } else {
-        setError(data.message || "Failed to create room. Please try again.");
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to create room.");
       }
-    } catch (error) {
-      console.log("Error creating room:", error);
-      setError("Network error. Please check your connection and try again.");
+    } catch (err) {
+      console.error("Error creating room:", err);
+      setError("Network error. Please try again.");
     } finally {
-      setIsLoading(false);
-      
+      setIsCreating(false);
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Background Content */}
-      <div className="relative">
-        {/* Header */}
-        <nav className="border-b border-border bg-card">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                  <FontAwesomeIcon
-                    icon={faHome}
-                    className="text-primary-foreground text-lg"
-                  />
-                </div>
-                <span className="text-xl font-bold text-foreground">
-                  ExpenseTracker
-                </span>
-              </div>
-            </div>
-          </div>
-        </nav>
+  const handleInvite = async (e) => {
+    e.preventDefault();
+    if (!inviteEmail.trim()) {
+      setError("Email cannot be empty");
+      return;
+    }
 
-        {/* Welcome Content */}
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-          <div className="text-center">
-            <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-8">
-              <FontAwesomeIcon
-                icon={faStar}
-                className="text-primary text-3xl"
-              />
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-              Welcome to ExpenseTracker!
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              You're all set! Create your first expense tracking room to start
-              collaborating with your team, family, or friends.
-            </p>
+    setIsInviting(true);
+    setError("");
+    setInviteSuccess("");
+
+    try {
+      const response = await fetch("/api/invite/send-invite", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: inviteEmail,
+          roomId: selectedRoomId,
+        }),
+      });
+
+      if (response.ok) {
+        setInviteSuccess(`Invitation sent to ${inviteEmail}`);
+        setInviteEmail("");
+        setTimeout(() => {
+          setShowInviteDialog(false);
+          setInviteSuccess("");
+        }, 2000);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || "Failed to send invite.");
+      }
+    } catch (err) {
+      console.error("Error sending invite:", err);
+      setError("Network error. Please try again.");
+    } finally {
+      setIsInviting(false);
+    }
+  };
+
+  const handleRoomClick = (roomId) => {
+    navigate(`/${roomId}/expenses`);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      {/* Header */}
+      <div className="border-b border-slate-200 bg-white shadow-sm">
+        <div className="max-w-6xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-bold text-slate-900">ExpenseTracker</h1>
+            <button
+              onClick={() => setShowCreateDialog(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+              Create Room
+            </button>
           </div>
-        </div>
-        <div>
-          <button onClick={() => setShowRoomDialog(true)}>create room</button>
         </div>
       </div>
 
-      {/* Room Creation Dialog */}
-      {showRoomDialog && (
-        <div className="p-4">
-          <input
-            type="text"
-            placeholder="Enter room Name"
-            value={roomName}
-            onChange={(e) => setRoomName(e.target.value)}
-            className="border p-2 rounded"
-          />
-          <button
-            onClick={handleCreateRoom}
-            disabled={isLoading}
-            className="bg-blue-500 text-white px-4 py-2 rounded ml-2"
-          >
-            {isLoading ? "Creating..." : "Create Room"}
-          </button>
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-6 py-12">
+        {error && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-blue-600 mb-4 animate-spin" />
+            <p className="text-slate-600">Loading your rooms...</p>
+          </div>
+        ) : rooms.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-lg border border-slate-200">
+            <FontAwesomeIcon icon={faUsers} className="text-5xl text-slate-300 mb-4" />
+            <h2 className="text-2xl font-semibold text-slate-900 mb-2">No Rooms Yet</h2>
+            <p className="text-slate-600 mb-6">Create your first expense tracking room to get started.</p>
+            <button
+              onClick={() => setShowCreateDialog(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-medium"
+            >
+              <FontAwesomeIcon icon={faPlus} />
+              Create Your First Room
+            </button>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {rooms.map((room) => (
+              <div
+                key={room.room_id}
+                className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
+              >
+                {/* Room Header */}
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
+                  <h3 className="text-xl font-semibold mb-1">{room.room_name}</h3>
+                  <div className="flex items-center gap-2 text-blue-100 text-sm">
+                    <FontAwesomeIcon icon={faUsers} />
+                    <span>{room.member_count} member{room.member_count !== 1 ? "s" : ""}</span>
+                  </div>
+                </div>
+
+                {/* Room Actions */}
+                <div className="p-4 flex gap-3">
+                  <button
+                    onClick={() => handleRoomClick(room.room_id)}
+                    className="flex-1 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-lg transition-colors font-medium"
+                  >
+                    Open
+                    <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSelectedRoomId(room.room_id);
+                      setShowInviteDialog(true);
+                    }}
+                    className="flex-1 flex items-center justify-center gap-2 bg-green-50 hover:bg-green-100 text-green-600 px-4 py-2 rounded-lg transition-colors font-medium"
+                  >
+                    <FontAwesomeIcon icon={faUserPlus} />
+                    Invite
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Create Room Dialog */}
+      {showCreateDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <h2 className="text-2xl font-semibold text-slate-900 mb-4">Create New Room</h2>
+            <form onSubmit={handleCreateRoom}>
+              <input
+                type="text"
+                placeholder="Room name (e.g., Team Project, Family Expenses)"
+                value={roomName}
+                onChange={(e) => setRoomName(e.target.value)}
+                className="w-full border border-slate-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={isCreating}
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateDialog(false);
+                    setRoomName("");
+                    setError("");
+                  }}
+                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                  disabled={isCreating}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  disabled={isCreating}
+                >
+                  {isCreating && <FontAwesomeIcon icon={faSpinner} className="animate-spin" />}
+                  {isCreating ? "Creating..." : "Create"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Invite Dialog */}
+      {showInviteDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
+            <h2 className="text-2xl font-semibold text-slate-900 mb-2">Invite Member</h2>
+            <p className="text-slate-600 mb-4">Send an invitation to join this room</p>
+            
+            {inviteSuccess && (
+              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                ✓ {inviteSuccess}
+              </div>
+            )}
+
+            <form onSubmit={handleInvite}>
+              <input
+                type="email"
+                placeholder="Enter email address"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="w-full border border-slate-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
+                disabled={isInviting}
+              />
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowInviteDialog(false);
+                    setInviteEmail("");
+                    setInviteSuccess("");
+                    setError("");
+                  }}
+                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                  disabled={isInviting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  disabled={isInviting}
+                >
+                  {isInviting && <FontAwesomeIcon icon={faSpinner} className="animate-spin" />}
+                  {isInviting ? "Sending..." : "Send Invite"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

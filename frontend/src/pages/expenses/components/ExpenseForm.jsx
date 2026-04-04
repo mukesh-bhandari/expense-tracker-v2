@@ -1,46 +1,74 @@
 import React, { useState, useEffect } from "react";
 import { NepaliDatePicker } from "nepali-datepicker-reactjs";
+import { useParams } from "react-router-dom";
 
 function ExpenseForm({ members, onAddExpense }) {
+  const { roomId } = useParams();
+
   const [item, setItem] = useState("");
   const [price, setPrice] = useState("");
-  const [paidBy, setPaidBy] = useState(0);
+  const [paidBy, setPaidBy] = useState("");
   const [date, setDate] = useState("");
   const [isAdding, setIsAdding] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("submitted");
     if (isAdding) return;
     setIsAdding(true);
 
-    if (item && price && paidBy) {
-      const newExpense = {
-        id: Date.now(),
-        item,
-        price: parseFloat(price),
-        paidBy,
-        date,
-      };
+    console.log("Form values:", { item, price, paidBy });
+    console.log("Falsy checks:", {
+      "!item": !item,
+      "!price": !price,
+      "!paidBy": !paidBy,
+    });
 
-      try {
-        const response = await fetch("/api/expenses/add-expense", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(newExpense),
-        });
-        const data = await response.json();
-        onAddExpense(data);
-        setItem("");
-        setPrice("");
-        setPaidBy("");
-        setDate("");
-      } catch (error) {
-        console.error("Error adding expense:", error);
-      } finally {
-        setIsAdding(false);
+    if (!item || !price || !paidBy) {
+      console.log(
+        "❌ Missing required fields - item:",
+        item,
+        "price:",
+        price,
+        "paidBy:",
+        paidBy,
+      );
+      setIsAdding(false); // RESET HERE IF VALIDATION FAILS
+      return;
+    }
+
+    const newExpense = {
+      item,
+      price: parseFloat(price),
+      paidBy: parseInt(paidBy),
+      date: date || "",
+    };
+
+    try {
+      const response = await fetch(`/api/expenses/${roomId}/add-expenses`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newExpense),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const data = await response.json();
+      console.log("✅ Expense added:", data.expense);
+      onAddExpense(data.expense);
+
+      // Clear form
+      setItem("");
+      setPrice("");
+      setPaidBy("");
+      setDate("");
+    } catch (error) {
+      console.error("❌ Error adding expense:", error);
+      alert("Failed to add expense");
+    } finally {
+      setIsAdding(false); // ALWAYS RESET STATE
     }
   };
 
@@ -115,7 +143,7 @@ function ExpenseForm({ members, onAddExpense }) {
               </option>
               {members.map((member) => {
                 return (
-                  <option key={member.user_id} value={member.user_id}>
+                  <option key={member.id} value={member.id}>
                     {member.username}
                   </option>
                 );

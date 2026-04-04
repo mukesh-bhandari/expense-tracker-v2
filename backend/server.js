@@ -3,14 +3,14 @@ const cors = require("cors");
 const express = require("express");
 const pool = require("./config/db");
 const app = express();
-const bcrypt = require("bcrypt");
+
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const authRoute = require("./routes/authRoute");
 const inviteRoute = require("./routes/inviteRoute");
 const roomRoute = require("./routes/roomRoute");
 const expenseRoute = require("./routes/expenseRoute")
-const crypto = require("crypto");
+
 
 app.use(
   cors({

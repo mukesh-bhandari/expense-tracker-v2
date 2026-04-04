@@ -29,10 +29,19 @@ router.get("/my-rooms", authenticateUser, async (req, res) => {
   const userId = req.user.id;
   try {
     const result = await pool.query(
-      "SELECT room_id FROM room_members WHERE user_id = $1",
+      `SELECT 
+        r.id AS room_id,
+        r.name AS room_name,
+        COUNT(rm2.user_id) AS member_count
+      FROM room_members myrm
+      JOIN rooms r ON myrm.room_id = r.id
+      JOIN room_members rm2 ON r.id = rm2.room_id
+      WHERE myrm.user_id = $1
+      GROUP BY r.id, r.name
+      ORDER BY r.id
+    `,
       [userId]
     );
-
     // get the rooms form roomid
     res.json(result.rows)
   } catch (error) {
@@ -41,8 +50,12 @@ router.get("/my-rooms", authenticateUser, async (req, res) => {
 });
 
 router.get("/:roomId/members",  async (req, res) => {
-  const { roomId } = req.params;
+  const roomId = parseInt(req.params.roomId); // PARSE STRING TO INTEGER
   
+  // Check if roomId is valid
+  if (isNaN(roomId)) {
+    return res.status(400).json({ error: "Invalid room ID" });
+  } 
 
   try {
     const result = await pool.query(
