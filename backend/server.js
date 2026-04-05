@@ -11,9 +11,15 @@ const roomRoute = require("./routes/roomRoute");
 const expenseRoute = require("./routes/expenseRoute")
 
 
+const allowedOrigins = [
+  process.env.FRONTEND_DEV_URL,
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",  // Local Vite dev server
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: [process.env.FRONTEND_DEV_URL],
+    origin: allowedOrigins,
     credentials: true,
   })
 );
@@ -26,10 +32,10 @@ pool.on("error", (err) => {
   process.exit(-1);
 });
 
-app.use("/api/auth", authRoute);
-app.use("/api/invite", inviteRoute);
-app.use("/api/rooms", roomRoute);
-app.use("/api/expenses", expenseRoute)
+app.use("/auth", authRoute);
+app.use("/invite", inviteRoute);
+app.use("/rooms", roomRoute);
+app.use("/expenses", expenseRoute)
 
 app.listen(5000, () => {
   console.log("server running on port 5000");
