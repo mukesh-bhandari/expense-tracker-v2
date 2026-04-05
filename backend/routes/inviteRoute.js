@@ -88,6 +88,14 @@ router.post("/accept-invite", authenticateUser, async (req, res) => {
 
     const invite = result.rows[0];
 
+    // Check if room_id exists
+    if (!invite.room_id) {
+      return res.status(400).json({ 
+        error: "Invalid invite",
+        details: "This invitation doesn't have a valid room ID"
+      });
+    }
+
     // Check expiry
     const createdAt = new Date(invite.created_at).getTime();
     const now = new Date().getTime();
@@ -109,14 +117,13 @@ router.post("/accept-invite", authenticateUser, async (req, res) => {
 
     // Add user to room
     await pool.query(
-      "INSERT INTO room_members (room_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+      "INSERT INTO room_members (room_id, user_id) VALUES ($1, $2)",
       [invite.room_id, userId]
     );
 
     res.json({ message: "Invite accepted", roomId: invite.room_id });
   } catch (err) {
-    console.error("Error accepting invite:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 

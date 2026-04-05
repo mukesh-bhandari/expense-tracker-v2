@@ -1,6 +1,6 @@
 import { useEffect, useState, useContext } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { AuthContext } from "../../contexts/AuthContext.jsx";
+import { AuthContext } from "../../contexts/AuthContext";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faCheckCircle, faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
 
@@ -16,15 +16,15 @@ function InviteAccept() {
   const email = searchParams.get("email");
 
   useEffect(() => {
-    // If not authenticated, redirect to login with return URL
-    if (isAuthenticated === false) {
-      const returnUrl = `/invite/accept?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
-      navigate(`/signup?redirect=${encodeURIComponent(returnUrl)}`);
+    if (isAuthenticated === null) {
+      // Still loading auth state - wait
       return;
     }
 
-    if (isAuthenticated === null) {
-      // Still loading auth
+    if (isAuthenticated === false) {
+      // Not authenticated - redirect to signup with invite link
+      const redirectUrl = `/invite/accept?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+      navigate(`/signup?redirect=${encodeURIComponent(redirectUrl)}`);
       return;
     }
 
@@ -138,10 +138,10 @@ function InviteAccept() {
             <h2 className="text-2xl font-semibold text-slate-900 mb-2">Invite Error</h2>
             <p className="text-red-600 mb-6">{error}</p>
             <button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate("/rooms")}
               className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
             >
-              Back to Dashboard
+              Back to Rooms
             </button>
           </div>
         )}

@@ -37,7 +37,10 @@ function Signup() {
   const [searchParams] = useSearchParams();
   const { setIsAuthenticated } = useContext(AuthContext);
   const otpRefs = useRef([]);
-  const redirectUrl = searchParams.get("redirect");
+  
+  // Decode the redirect URL if it exists
+  const encodedRedirect = searchParams.get("redirect");
+  const redirectUrl = encodedRedirect ? decodeURIComponent(encodedRedirect) : null;
 
   // Timer for resend OTP
   useEffect(() => {
@@ -196,7 +199,7 @@ function Signup() {
         // Signup successful = already authenticated with correct credentials
         setIsAuthenticated(true);
         // Redirect to the stored URL or dashboard if no redirect was provided
-        navigate(redirectUrl || "/dashboard");
+        navigate(redirectUrl || "/rooms");
       } else {
         setError(data.message || "Signup failed. Please try again.");
       }

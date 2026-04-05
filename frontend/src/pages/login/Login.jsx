@@ -33,7 +33,7 @@ function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        navigate("/dashboard");
+        navigate("/rooms");
       } else {
         setError(data.message || "Login failed. Please try again.");
       }
