@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHome } from "@fortawesome/free-solid-svg-icons";
-import ExpenseList from "./components/ExpenseList";
-import BalanceSheet from "./components/BalanceSheet";
-import ExpenseEditModal from "./components/EditModal";
-import ExpenseForm from "./components/ExpenseForm";
+import ExpenseList from "./components/ExpenseList.jsx";
+import BalanceSheet from "./components/BalanceSheet.jsx";
+import ExpenseEditModal from "./components/EditModal.jsx";
+import ExpenseForm from "./components/ExpenseForm.jsx";
 import { useParams } from "react-router-dom";
-import { calculateTransactionsFromExpenses } from "./utils/expenseUtils";
+import { calculateTransactionsFromExpenses } from "./utils/expenseUtils.js";
 
 function Expenses() {
   const { roomId } = useParams();

@@ -2,14 +2,14 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles/index.css";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
-import Login from "./pages/login/Login";
-import Signup from "./pages/signup/Signup";
-import Room from "./pages/room/Room";
-import Home from "./pages/home/Home";
-import Expenses from "./pages/expenses/Expenses";
-import InviteAccept from "./pages/invite/InviteAccept";
-import { AuthProvider } from "./contexts/AuthContext";
-import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "./pages/login/Login.jsx";
+import Signup from "./pages/signup/Signup.jsx";
+import Room from "./pages/room/Room.jsx";
+import Home from "./pages/home/Home.jsx";
+import Expenses from "./pages/expenses/Expenses.jsx";
+import InviteAccept from "./pages/invite/InviteAccept.jsx";
+import { AuthProvider } from "./contexts/AuthContext.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
 
 const router = createBrowserRouter([
   {
