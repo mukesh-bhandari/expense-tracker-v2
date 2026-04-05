@@ -6,6 +6,7 @@ import BalanceSheet from "./components/BalanceSheet";
 import ExpenseEditModal from "./components/EditModal";
 import ExpenseForm from "./components/ExpenseForm";
 import { useParams } from "react-router-dom";
+import { calculateTransactionsFromExpenses } from "./utils/expenseUtils";
 
 function Expenses() {
   const { roomId } = useParams();
@@ -57,8 +58,10 @@ function Expenses() {
 
   // ===== MODAL CALLBACKS =====
 
-  const handleOpenBalanceSheet = (transactions) => {
-    console.log("ExpenseList called handleOpenBalanceSheet callback");
+  const handleOpenBalanceSheet = () => {
+    console.log("View Balances clicked, calculating transactions...");
+    const transactions = calculateTransactionsFromExpenses(expenses);
+    console.log("Calculated transactions:", transactions);
     setNetTransactions(transactions);
     setIsBalanceSheetOpen(true);
   };
@@ -98,13 +101,29 @@ function Expenses() {
     console.log("💡 BalanceSheet called handleTransactionComplete callback");
 
     const [from, to] = transactionPair;
+    // from = first person, to = second person
+    // We need to mark ALL debts between them as paid (both directions)
 
     const updatedExpenses = expenses.map((expense) => {
       const updatedSplits = expense.splits.map((split) => {
-        // Mark as paid if this split is from the person who owes money
-        if (split.username === from && expense.paid_by === to) {
+        // Case 1: Expense paid by "to", and "from" has an unpaid split
+        if (
+          expense.paid_by_username === to &&
+          split.user_username === from &&
+          split.is_paid === false
+        ) {
           return { ...split, is_paid: true };
         }
+
+        // Case 2: Expense paid by "from", and "to" has an unpaid split
+        if (
+          expense.paid_by_username === from &&
+          split.user_username === to &&
+          split.is_paid === false
+        ) {
+          return { ...split, is_paid: true };
+        }
+
         return split;
       });
 
@@ -112,6 +131,12 @@ function Expenses() {
     });
 
     setExpenses(updatedExpenses);
+    
+    // Recalculate transactions after marking paid
+    const newTransactions = calculateTransactionsFromExpenses(updatedExpenses);
+    setNetTransactions(newTransactions);
+    
+    console.log("✅ Transaction marked as paid, updated transactions:", newTransactions);
   };
 
   const handleAddExpense = (newExpense) => {
@@ -121,7 +146,8 @@ function Expenses() {
   };
 
   const handleExpensesUpdate = (updatedExpenses) => {
-    console.log("💡 Expenses updated");
+  
+    console.log("💡 Expenses updated", updatedExpenses);
     setExpenses(updatedExpenses);
   };
 
@@ -171,14 +197,14 @@ function Expenses() {
             />
           )}
 
-          {isEditModalOpen && editingExpense && (
+          {/* {isEditModalOpen && editingExpense && (
             <ExpenseEditModal
               expense={editingExpense}
               persons={members}
               onClose={handleCloseEditModal}
               onSave={handleSaveExpenseAmounts}
             />
-          )}
+          )} */}
         </div>
       </div>
     </div>

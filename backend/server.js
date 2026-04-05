@@ -4,7 +4,6 @@ const express = require("express");
 const pool = require("./config/db");
 const app = express();
 
-const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const authRoute = require("./routes/authRoute");
 const inviteRoute = require("./routes/inviteRoute");

@@ -1,12 +1,19 @@
 const express = require("express");
 const pool = require("../config/db");
 const BS = require("bikram-sambat-js");
+const authenticateUser = require("../middleware/auth");
+const authorizeRoomMember = require("../middleware/roomAuth");
 
 const router = express.Router();
 
-router.post("/:roomId/add-expenses", async (req, res) => {
+router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, async (req, res) => {
   const { roomId } = req.params;
   const { item, price, paidBy, date } = req.body;
+
+  // Validate required fields
+  if (!item || !price || !paidBy) {
+    return res.status(400).json({ error: "Missing required fields: item, price, paidBy" });
+  }
 
   let dateToInsert = date;
   if (date === "") {
@@ -18,39 +25,45 @@ router.post("/:roomId/add-expenses", async (req, res) => {
   try {
     await client.query("BEGIN");
 
-    const expenseResult = await client.query(
-      `INSERT INTO expenses ( room_id, item, price, paid_by, bs_date) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [roomId, item, price, paidBy, dateToInsert]
-    );
-
-    const expense = expenseResult.rows[0];
-    // console.log(expense);
+    // Get members first and validate
     const membersResult = await client.query(
       `SELECT user_id FROM room_members WHERE room_id = $1`,
       [roomId]
     );
 
     const members = membersResult.rows;
+    
+    if (members.length === 0) {
+      throw new Error("No members in this room");
+    }
+
     const shareAmount = price / members.length;
 
-    //insert share amount for each member
+    // Insert expense
+    const expenseResult = await client.query(
+      `INSERT INTO expenses (room_id, item, price, paid_by, bs_date) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [roomId, item, price, paidBy, dateToInsert]
+    );
+
+    const expense = expenseResult.rows[0];
+
+    // Insert expense shares for each member
     await Promise.all(
       members.map((member) =>
         client.query(
           `INSERT INTO expense_shares (expense_id, user_id, amount_owed, is_paid) 
-       VALUES ($1, $2, $3, $4)`,
+           VALUES ($1, $2, $3, $4)`,
           [
             expense.id,
             member.user_id,
             shareAmount,
-            member.user_id === paidBy ? true : false,
+            member.user_id === paidBy,
           ]
         )
       )
     );
 
-    // expenses for frontend //
-
+    // Get expense details for response
     const expenseDetailsResult = await client.query(
       `SELECT e.id, e.room_id, e.item, e.price, e.paid_by, e.bs_date, u.username AS paid_by_username
        FROM expenses e
@@ -80,13 +93,13 @@ router.post("/:roomId/add-expenses", async (req, res) => {
   } catch (error) {
     await client.query("ROLLBACK");
     console.error("Error adding expense:", error);
-    res.status(500).json({ error: "Error adding expense" });
+    res.status(500).json({ error: error.message || "Error adding expense" });
   } finally {
     client.release();
   }
 });
 
-router.get("/:roomId/get-expenses", async (req, res) => {
+router.get("/:roomId/get-expenses", authenticateUser, authorizeRoomMember, async (req, res) => {
   const { roomId } = req.params;
   try {
     const expensesResult = await pool.query(
@@ -125,7 +138,7 @@ router.get("/:roomId/get-expenses", async (req, res) => {
   }
 });
 
-router.post("/save-states", async (req, res) => {
+router.post("/save-states", authenticateUser, authorizeRoomMember, async (req, res) => {
   const { expenses } = req.body;
 
   const client = await pool.connect();
@@ -169,6 +182,40 @@ router.post("/save-states", async (req, res) => {
   }
 });
 
+router.delete("/:roomId/:expenseId", authenticateUser, authorizeRoomMember, async (req, res) => {
+  const { roomId, expenseId } = req.params;
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    // Delete expense shares first (foreign key constraint)
+    await client.query(
+      `DELETE FROM expense_shares WHERE expense_id = $1`,
+      [expenseId]
+    );
+
+    // Delete the expense
+    const result = await client.query(
+      `DELETE FROM expenses WHERE id = $1 AND room_id = $2 RETURNING id`,
+      [expenseId, roomId]
+    );
+
+    if (result.rows.length === 0) {
+      await client.query("ROLLBACK");
+      return res.status(404).json({ error: "Expense not found" });
+    }
+
+    await client.query("COMMIT");
+    res.json({ message: "Expense deleted successfully" });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error deleting expense:", error);
+    res.status(500).json({ error: "Error deleting expense" });
+  } finally {
+    client.release();
+  }
+});
 
 module.exports = router;
 

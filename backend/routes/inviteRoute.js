@@ -3,59 +3,119 @@ const pool = require("../config/db");
 const express = require("express");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
-
+const authenticateUser = require("../middleware/auth");
 
 const router = express.Router();
 
-router.post("/send-invite", async (req, res) => {
-  const { email, roomId } = req.body; //get room id from forntend
+router.post("/send-invite", authenticateUser, async (req, res) => {
+  const { email, roomId } = req.body;
   const token = crypto.randomBytes(32).toString("hex");
-  const hashedToken = await bcrypt.hash(token, 10); //bccrypt not good
-  await pool.query(
-    "INSERT INTO invitation (email, token, room_id, status) VALUES ($1, $2, $3, 'pending')",
-    [email, hashedToken, roomId]
-  );
-  sendInviteEmail(
-    email,
-    `Click here to join: https://yourapp.com/invite/accept?token=${token}`
-  );
-  res.json({ message: "invite sent" });
+  const hashedToken = await bcrypt.hash(token, 10);
+  
+  try {
+    await pool.query(
+      "INSERT INTO invitation (email, token, room_id, status, created_at) VALUES ($1, $2, $3, 'pending', NOW())",
+      [email, hashedToken, roomId]
+    );
+
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+    const inviteLink = `${frontendUrl}/invite/accept?token=${token}&email=${encodeURIComponent(email)}`;
+    
+    await sendInviteEmail(email, inviteLink);
+    res.json({ message: "invite sent" });
+  } catch (error) {
+    console.error("Error sending invite:", error);
+    res.status(500).json({ error: "Failed to send invite" });
+  }
 });
 
-//redirect to login if not logged in then accept-invite
-
-router.post("/accept-invite", async (req, res) => {
-  const { token, email } = req.body; // need userid
-  const userId = req.user.id;
+router.get("/verify-token", async (req, res) => {
+  const { token, email } = req.query;
 
   try {
-    // 1. Find invite by email (or store token in DB with expiry)
+    if (!token || !email) {
+      return res.status(400).json({ error: "Missing token or email" });
+    }
+
+    // Find pending invite by email
     const result = await pool.query(
       "SELECT * FROM invitation WHERE email = $1 AND status = 'pending'",
       [email]
     );
 
     if (result.rows.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "No pending invite for this email" });
+      return res.status(400).json({ error: "No pending invite for this email" });
     }
 
     const invite = result.rows[0];
 
+    // Check if invite expired (24 hours)
+    const createdAt = new Date(invite.created_at).getTime();
+    const now = new Date().getTime();
+    const expiryTime = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+
+    if (now - createdAt > expiryTime) {
+      // Delete expired invite
+      await pool.query("DELETE FROM invitation WHERE id = $1", [invite.id]);
+      return res.status(400).json({ error: "Invite link expired" });
+    }
+
+    // Verify token matches
     const isMatch = await bcrypt.compare(token, invite.token);
     if (!isMatch) {
       return res.status(400).json({ error: "Invalid token" });
     }
 
-    const updatedInvite = await pool.query(
-      "UPDATE invitation SET status = 'accepted' WHERE email = $1",
+    res.json({ message: "Token verified", email, roomId: invite.room_id });
+  } catch (err) {
+    console.error("Error verifying token:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+router.post("/accept-invite", authenticateUser, async (req, res) => {
+  const { token, email } = req.body;
+  const userId = req.user.id;
+
+  try {
+    // Find invite by email
+    const result = await pool.query(
+      "SELECT * FROM invitation WHERE email = $1 AND status = 'pending'",
       [email]
     );
-    const invitation = updatedInvite.rows[0];
 
-   await pool.query("INSERT INTO room_members (room_id, user_id) VALUES ($1, $2)", [invitation.room_id, userId])
-    res.json({ message: "Invite accepted" });
+    if (result.rows.length === 0) {
+      return res.status(400).json({ error: "No pending invite for this email" });
+    }
+
+    const invite = result.rows[0];
+
+    // Check expiry
+    const createdAt = new Date(invite.created_at).getTime();
+    const now = new Date().getTime();
+    const expiryTime = 24 * 60 * 60 * 1000;
+
+    if (now - createdAt > expiryTime) {
+      await pool.query("DELETE FROM invitation WHERE id = $1", [invite.id]);
+      return res.status(400).json({ error: "Invite link expired" });
+    }
+
+    // Verify token
+    const isMatch = await bcrypt.compare(token, invite.token);
+    if (!isMatch) {
+      return res.status(400).json({ error: "Invalid token" });
+    }
+
+    // Update invite status
+    await pool.query("UPDATE invitation SET status = 'accepted' WHERE id = $1", [invite.id]);
+
+    // Add user to room
+    await pool.query(
+      "INSERT INTO room_members (room_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+      [invite.room_id, userId]
+    );
+
+    res.json({ message: "Invite accepted", roomId: invite.room_id });
   } catch (err) {
     console.error("Error accepting invite:", err);
     res.status(500).json({ error: "Server error" });

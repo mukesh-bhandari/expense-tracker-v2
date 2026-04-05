@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef, useContext } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { AuthContext } from "../../contexts/AuthContext";
 import { 
   faUser, 
   faLock, 
@@ -33,7 +34,10 @@ function Signup() {
   const [resendTimer, setResendTimer] = useState(60);
   
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const { setIsAuthenticated } = useContext(AuthContext);
   const otpRefs = useRef([]);
+  const redirectUrl = searchParams.get("redirect");
 
   // Timer for resend OTP
   useEffect(() => {
@@ -189,8 +193,10 @@ function Signup() {
       const data = await response.json();
       
       if (response.ok) {
-        // Auto sign-in and redirect to dashboard
-        navigate("/dashboard");
+        // Signup successful = already authenticated with correct credentials
+        setIsAuthenticated(true);
+        // Redirect to the stored URL or dashboard if no redirect was provided
+        navigate(redirectUrl || "/dashboard");
       } else {
         setError(data.message || "Signup failed. Please try again.");
       }

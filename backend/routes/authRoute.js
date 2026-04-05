@@ -206,5 +206,16 @@ router.post("/logout", async (req, res) => {
   }
 });
 
+const authenticateUser = require("../middleware/auth");
+
+router.get("/verify", authenticateUser, (req, res) => {
+  res.json({
+    message: "User authenticated",
+    user: {
+      id: req.user.id,
+      username: req.user.username,
+    },
+  });
+});
 
 module.exports = router;

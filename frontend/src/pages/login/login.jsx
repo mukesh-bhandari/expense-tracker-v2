@@ -1,7 +1,13 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUser, faLock, faSignInAlt, faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons";
+import {
+  faUser,
+  faLock,
+  faSignInAlt,
+  faEye,
+  faEyeSlash,
+} from "@fortawesome/free-solid-svg-icons";
 
 function Login() {
   const [username, setUsername] = useState("");
@@ -25,7 +31,7 @@ function Login() {
         body: JSON.stringify({ username, password, keepSignedIn }),
       });
       const data = await response.json();
-      
+
       if (response.ok) {
         navigate("/dashboard");
       } else {
@@ -44,10 +50,17 @@ function Login() {
       {/* Header */}
       <div className="text-center mb-8">
         <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-          <FontAwesomeIcon icon={faSignInAlt} className="text-primary-foreground text-2xl" />
+          <FontAwesomeIcon
+            icon={faSignInAlt}
+            className="text-primary-foreground text-2xl"
+          />
         </div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Welcome Back</h1>
-        <p className="text-muted-foreground">Sign in to your expense tracker account</p>
+        <h1 className="text-3xl font-bold text-foreground mb-2">
+          Welcome Back
+        </h1>
+        <p className="text-muted-foreground">
+          Sign in to your expense tracker account
+        </p>
       </div>
 
       {/* Login Form */}
@@ -62,12 +75,18 @@ function Login() {
 
           {/* Username Field */}
           <div>
-            <label htmlFor="username" className="block text-sm font-medium text-muted-foreground mb-2">
+            <label
+              htmlFor="username"
+              className="block text-sm font-medium text-muted-foreground mb-2"
+            >
               Username
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FontAwesomeIcon icon={faUser} className="text-muted-foreground text-sm" />
+                <FontAwesomeIcon
+                  icon={faUser}
+                  className="text-muted-foreground text-sm"
+                />
               </div>
               <input
                 id="username"
@@ -84,12 +103,18 @@ function Login() {
 
           {/* Password Field */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-muted-foreground mb-2">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-muted-foreground mb-2"
+            >
               Password
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <FontAwesomeIcon icon={faLock} className="text-muted-foreground text-sm" />
+                <FontAwesomeIcon
+                  icon={faLock}
+                  className="text-muted-foreground text-sm"
+                />
               </div>
               <input
                 id="password"
@@ -107,16 +132,16 @@ function Login() {
                 onClick={() => setShowPassword(!showPassword)}
                 disabled={isLoading}
               >
-                <FontAwesomeIcon 
-                  icon={showPassword ? faEyeSlash : faEye} 
-                  className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" 
+                <FontAwesomeIcon
+                  icon={showPassword ? faEyeSlash : faEye}
+                  className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200"
                 />
               </button>
             </div>
           </div>
 
           {/* Keep Signed In */}
-          <div className="flex items-center">
+          {/* <div className="flex items-center">
             <div className="relative">
               <input
                 id="keepSignedIn"
@@ -146,6 +171,16 @@ function Login() {
             <label htmlFor="keepSignedIn" className="ml-3 text-sm text-muted-foreground cursor-pointer">
               Keep me signed in
             </label>
+          </div> */}
+
+          <div>
+            <p> Dont have an account? Sign Up</p>
+            <button
+              onClick={() => navigate("/signup")}
+              className="text-sm text-blue-600 hover:underline mt-2"
+            >
+              Create an account
+            </button>
           </div>
 
           {/* Submit Button */}
@@ -193,6 +228,5 @@ function Login() {
     </div>
   );
 }
-
 
 export default Login;

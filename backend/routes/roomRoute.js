@@ -49,7 +49,7 @@ router.get("/my-rooms", authenticateUser, async (req, res) => {
   }
 });
 
-router.get("/:roomId/members",  async (req, res) => {
+router.get("/:roomId/members", authenticateUser, async (req, res) => {
   const roomId = parseInt(req.params.roomId); // PARSE STRING TO INTEGER
   
   // Check if roomId is valid
