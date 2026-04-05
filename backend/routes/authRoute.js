@@ -23,7 +23,7 @@ router.post("/send-code", async (req, res) => {
   } catch (error) {
     return res
       .status(500)
-      .json({ message: "Error checking email from database" });
+      .json({ message: "Error checking email from database", error: error.message });
   }
 
   const code = crypto.randomInt(100000, 999999);
@@ -36,17 +36,15 @@ router.post("/send-code", async (req, res) => {
       [code, expiresAt, email]
     );
   } catch (error) {
-    console.log("database error", error);
-    return res.status(500).json({ message: "Error saving code to database" });
+    return res.status(500).json({ message: "Error saving code to database", error: error.message });
   }
 
   try {
     // verifaction mail
-    sendVerificationEmail(email, code);
+    await sendVerificationEmail(email, code);
     return res.json({ message: "Verification code sent" });
   } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Failed to send email" });
+    return res.status(500).json({ error: "Failed to send email", details: err.message });
   }
 });
 
@@ -74,8 +72,7 @@ router.post("/verify-code", async (req, res) => {
     await pool.query("DELETE FROM verification WHERE email = $1", [email]);
     res.json({ message: "Email verified " });
   } catch (error) {
-    console.error("Error verifying code:", error);
-    res.status(500).json({ error: "Server error while verifying code" });
+    res.status(500).json({ error: "Server error while verifying code", details: error.message });
   }
 });
 
@@ -124,8 +121,7 @@ router.post("/signup", async (req, res) => {
     });
     return res.json({ message: "Signup Successfull" });
   } catch (error) {
-    console.error("Signup error:", error);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: error.message });
   }
 });
 
@@ -182,8 +178,7 @@ router.post("/login", async (req, res) => {
       res.json({ message: "Login Successfull" });
     }
   } catch (error) {
-    console.log("server error", error);
-    res.status(500).json({ message: "Error login in" });
+    res.status(500).json({ message: "Error login in", details: error.message });
   }
 });
 

@@ -24,8 +24,7 @@ router.post("/send-invite", authenticateUser, async (req, res) => {
     await sendInviteEmail(email, inviteLink);
     res.json({ message: "invite sent" });
   } catch (error) {
-    console.error("Error sending invite:", error);
-    res.status(500).json({ error: "Failed to send invite" });
+    res.status(500).json({ error: "Failed to send invite", details: error.message });
   }
 });
 
@@ -68,8 +67,7 @@ router.get("/verify-token", async (req, res) => {
 
     res.json({ message: "Token verified", email, roomId: invite.room_id });
   } catch (err) {
-    console.error("Error verifying token:", err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error", details: err.message });
   }
 });
 

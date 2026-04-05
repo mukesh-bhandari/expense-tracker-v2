@@ -21,7 +21,7 @@ router.post("/create-room", authenticateUser, async (req, res) => {
 
     return res.json({data: room });
   } catch (error) {
-    res.status(500).json({ error: "error creating room" });
+    res.status(500).json({ error: "error creating room", details: error.message });
   }
 });
 
@@ -45,7 +45,7 @@ router.get("/my-rooms", authenticateUser, async (req, res) => {
     // get the rooms form roomid
     res.json(result.rows)
   } catch (error) {
-    res.status(500).json({ error: "error getting users rooms" });
+    res.status(500).json({ error: "error getting users rooms", details: error.message });
   }
 });
 
@@ -68,8 +68,7 @@ router.get("/:roomId/members", authenticateUser, async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
-    console.error("Error fetching room members:", error);
-    res.status(500).json({ error: "Error fetching room members" });
+    res.status(500).json({ error: "Error fetching room members", details: error.message });
   }
 });
 
