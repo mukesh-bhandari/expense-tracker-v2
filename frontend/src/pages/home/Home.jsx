@@ -22,32 +22,37 @@ function Home() {
     {
       icon: faChartLine,
       title: "Smart Analytics",
-      description: "Get detailed insights into your spending patterns with interactive charts and reports."
+      description: "Get detailed insights into your spending patterns with our interactive and intutive UI."
     },
     {
       icon: faWallet,
       title: "Multiple Accounts",
-      description: "Track expenses across different accounts, credit cards, and payment methods."
+      description: "Track expenses across different groups at the same time."
     },
+    // {
+    //   icon: faTags,
+    //   title: "Category Management",
+    //   description: "Organize your expenses with custom categories and automatic categorization."
+    // },
+    // {
+    //   icon: faCalendarAlt,
+    //   title: "Budget Planning",
+    //   description: "Set monthly budgets and get alerts when you're approaching your limits."
+    // },
     {
-      icon: faTags,
-      title: "Category Management",
-      description: "Organize your expenses with custom categories and automatic categorization."
-    },
-    {
-      icon: faCalendarAlt,
-      title: "Budget Planning",
-      description: "Set monthly budgets and get alerts when you're approaching your limits."
-    },
-    {
-      icon: faShieldAlt,
-      title: "Secure & Private",
-      description: "Your financial data is encrypted and stored securely with bank-level security."
+      icon: faUsers,
+      title: "Invite & Track",
+      description: "Invite your friends and family to track shared expenses together in real-time."
     },
     {
       icon: faMobile,
       title: "Multi-Platform",
       description: "Access your expenses anywhere with our responsive web and mobile apps."
+    },
+     {
+      icon: faDollarSign,
+      title: "Balance Sheet",
+      description: "Easily view who owes whom and settle up in one click."
     }
   ];
 
@@ -120,14 +125,14 @@ function Home() {
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-border pt-12">
+          {/* <div className="grid grid-cols-2 md:grid-cols-4 gap-8 border-t border-border pt-12">
             {stats.map((stat, index) => (
               <div key={index} className="text-center">
                 <div className="text-3xl font-bold text-primary mb-2">{stat.number}</div>
                 <div className="text-muted-foreground text-sm">{stat.label}</div>
               </div>
             ))}
-          </div>
+          </div> */}
         </div>
       </section>
 
@@ -175,21 +180,29 @@ function Home() {
               <p className="text-muted-foreground">Sign up with your Gmail in seconds and verify your email to get started.</p>
             </div>
 
-            <div className="text-center">
+             <div className="text-center">
               <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-2xl font-bold text-primary-foreground">2</span>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-3">Add Your Expenses</h3>
-              <p className="text-muted-foreground">Easily log your daily expenses with our intuitive interface and smart categorization.</p>
+              <h3 className="text-xl font-semibold text-foreground mb-3">Invite Your Friends</h3>
+              <p className="text-muted-foreground">Invite your friends using Gmail and let them hop in.</p>
             </div>
 
             <div className="text-center">
               <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
                 <span className="text-2xl font-bold text-primary-foreground">3</span>
               </div>
-              <h3 className="text-xl font-semibold text-foreground mb-3">Track & Optimize</h3>
-              <p className="text-muted-foreground">Analyze your spending patterns and make informed decisions with detailed reports.</p>
+              <h3 className="text-xl font-semibold text-foreground mb-3">Add Your Expenses</h3>
+              <p className="text-muted-foreground">Easily log your daily expenses with our intuitive interface and track total expenditure.</p>
             </div>
+{/* 
+            <div className="text-center">
+              <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-6">
+                <span className="text-2xl font-bold text-primary-foreground">3</span>
+              </div>
+              <h3 className="text-xl font-semibold text-foreground mb-3">Track & Optimize</h3>
+              <p className="text-muted-foreground">Analyze your spending patterns and make informed decisions.</p>
+            </div> */}
           </div>
         </div>
       </section>
@@ -201,7 +214,7 @@ function Home() {
             Ready to Take Control of Your Finances?
           </h2>
           <p className="text-xl text-primary-foreground/80 mb-8">
-            Join thousands of users who have already transformed their financial habits with ExpenseTracker.
+            Invite Your friends in this journey to track and get hold of your expenses.
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
