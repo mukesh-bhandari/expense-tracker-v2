@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Trash } from 'lucide-react';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faTrash, faCheck, faUser, faClock } from "@fortawesome/free-solid-svg-icons";
+import ConfirmDeleteDialog from "../../../components/ConfirmDeleteDialog";
 
 function ExpenseList({
   expenses = [],
@@ -8,6 +10,7 @@ function ExpenseList({
   onOpenEditModal,
 }) {
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, expense: null, isLoading: false });
 
   // Helper: Check if a split is skipped (amount_owed === 0)
   const isSkipped = (split) => {
@@ -55,7 +58,6 @@ function ExpenseList({
   // Toggle checkbox: marks member as paid
   const handleCheckboxClick = (expense, personUsername) => {
     if (expense.paid_by_username === personUsername) {
-      console.log("❌ Cannot toggle paid status for person who paid");
       return;
     }
 
@@ -86,11 +88,17 @@ function ExpenseList({
     onExpensesUpdate(updatedExpenses);
   };
 
-  // Delete expense
-  const handleDeleteExpense = async (expense) => {
-    if (!window.confirm(`Are you sure you want to delete "${expense.item}"?`)) {
-      return;
-    }
+  const openDeleteDialog = (expense) => {
+    setDeleteDialog({ isOpen: true, expense, isLoading: false });
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteDialog({ isOpen: false, expense: null, isLoading: false });
+  };
+
+  const handleConfirmDelete = async () => {
+    const expense = deleteDialog.expense;
+    setDeleteDialog((prev) => ({ ...prev, isLoading: true }));
 
     try {
       const response = await fetch(
@@ -102,15 +110,17 @@ function ExpenseList({
       );
 
       if (response.ok) {
-        console.log("✅ Expense deleted successfully");
         const updatedExpenses = expenses.filter((exp) => exp.id !== expense.id);
         onExpensesUpdate(updatedExpenses);
+        closeDeleteDialog();
       } else {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        alert("Failed to delete expense");
+        setDeleteDialog((prev) => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
-      console.error("❌ Error deleting expense:", error);
+      console.error("Error deleting expense:", error);
       alert("Failed to delete expense");
+      setDeleteDialog((prev) => ({ ...prev, isLoading: false }));
     }
   };
 
@@ -145,10 +155,10 @@ function ExpenseList({
       if (response.ok) {
         console.log("✅ All states saved successfully");
       } else {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        alert("Failed to save changes");
       }
     } catch (error) {
-      console.error("❌ Error saving states:", error);
+      console.error("Error saving states:", error);
       alert("Failed to save changes");
     } finally {
       setIsSaving(false);
@@ -156,102 +166,138 @@ function ExpenseList({
   };
 
   return (
-    <div className="">
-      {expenses.length !== 0 ? (
-        <>
-          <div className="flex justify-end gap-2 mb-4">
-            <button
-              onClick={onOpenBalanceSheet}
-              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
-            >
-              View Balances
-            </button>
-            <button
-              onClick={handleSaveButton}
-              disabled={isSaving}
-              className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSaving ? "Saving..." : "Save Changes"}
-            </button>
-          </div>
-          <div className="">
-            {expenses.map((expense) => (
-              <div
-                key={expense.id}
-                className="border-1 p-2 border-b-zinc-600 flex justify-between items-start"
+    <div className="space-y-6">
+      {expenses.length > 0 && (
+        <div className="state-panel overflow-hidden p-6">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-6">
+            <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
+              <FontAwesomeIcon icon={faClock} className="text-primary" />
+              Recent Expenses
+            </h2>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onOpenBalanceSheet}
+                className="px-4 py-2 text-sm font-medium btn-secondary-expense flex items-center gap-2"
               >
-                <div className="flex gap-4">
-                 <div>
-                   <div className="flex">
-                    
-                    <h1>{expense.item}</h1>
-                    <span>{expense.price}</span>
+                <FontAwesomeIcon icon={faUser} className="text-warning" />
+                View Balances
+              </button>
+              <button
+                onClick={handleSaveButton}
+                disabled={isSaving}
+                className="px-6 py-2 text-sm font-semibold btn-primary-expense disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSaving ? (
+                  <span className="flex items-center gap-2">
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Saving...
+                  </span>
+                ) : (
+                  "Save Changes"
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Expenses List */}
+          <div className="space-y-0">
+            {expenses.map((expense) => (
+              <div key={expense.id} className="border-b border-border-light p-4 last:border-b-0  transition-colors">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  {/* Expense Info */}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-normal text-foreground text-lg">{expense.item}</h3>
+                      <span className="font-semibold text-expense text-lg">
+                       NPR {parseFloat(expense.price).toFixed(2)}
+                      </span>
+                      
+                    </div>
+                    <p className="text-sm text-muted-foreground flex items-center gap-1">
+                      <FontAwesomeIcon icon={faUser} className="text-xs" />
+                      Paid by <span className="font-medium">{expense.paid_by_username}</span>
+                    </p>
                   </div>
-                  <h2>Paid by: {expense.paid_by_username}</h2>
-                  </div>
-                  <div className="flex gap-2">
+
+                  {/* Person Buttons */}
+                  <div className="flex flex-wrap gap-2 justify-start">
                     {expense.splits.map((split) => {
+                      const isExcluded = isSkipped(split);
                       const isPaid = split.is_paid;
-                      const isSkippedUser = isSkipped(split);
-                      const isPaidByPerson =
-                        expense.paid_by_username === split.user_username;
-
+                      const isPaidByPerson = expense.paid_by_username === split.user_username;
+                      
                       return (
-                        <div key={split.id} className="flex items-center gap-1">
-                          {/* Skip/Un-skip Button */}
+                        <div key={split.id} className="relative">
                           <button
-                            className={`px-2 py-1 rounded text-sm font-medium transition ${
-                              isSkippedUser
-                                ? "bg-gray-400 text-white opacity-60 line-through"
-                                : "bg-blue-400 text-white hover:bg-blue-500"
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 min-w-[100px] justify-center cursor-pointer ${
+                              isExcluded
+                                ? "bg-secondary text-muted-foreground border border-border"
+                                : isPaid
+                                ? "bg-income-light text-income border border-income/20"
+                                : "bg-expense-light text-expense border border-expense/20"
                             }`}
-                            onClick={() =>
-                              handleSkip(expense, split.user_username)
-                            }
-                            title={
-                              isSkippedUser
-                                ? "Click to include in payment"
-                                : "Click to skip payment"
-                            }
+                            onClick={() => handleSkip(expense, split.user_username)}
                           >
-                            {split.user_username}
-                            <span className="ml-1 text-xs font-bold">
-                              {isSkippedUser ? "✗ Skip" : "+"}
-                            </span>
+                            <span>{split.user_username}</span>
+                            {isExcluded && <span className="text-xs opacity-75">Skip</span>}
                           </button>
-
-                          {/* Checkbox for marking as paid */}
-                          <input
-                            type="checkbox"
-                            checked={isPaid}
-                            onChange={() =>
-                              handleCheckboxClick(expense, split.user_username)
-                            }
-                            disabled={isPaidByPerson || isSkippedUser}
-                            className="w-4 h-4 cursor-pointer"
-                            title="Mark as paid"
-                          />
+                          
+                          {!isExcluded && !isPaidByPerson && (
+                            <button
+                              className={`absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                                isPaid
+                                  ? "bg-income border-income text-income-foreground"
+                                  : "bg-card border-border hover:border-primary"
+                              }`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleCheckboxClick(expense, split.user_username);
+                              }}
+                            >
+                              {isPaid && <FontAwesomeIcon icon={faCheck} className="text-xs" />}
+                            </button>
+                          )}
                         </div>
                       );
                     })}
                   </div>
-                </div>
 
-                <button
-                  onClick={() => handleDeleteExpense(expense)}
-                  className="ml-4 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm font-medium whitespace-nowrap flex items-center gap-1 "
-                  title="Delete this expense"
-                >
-                 <Trash size="16"></Trash>
-                  Delete
-                </button>
+                  {/* Delete Button */}
+                  <button
+                    onClick={() => openDeleteDialog(expense)}
+                    className="p-2 text-expense hover:bg-expense-light rounded-lg transition-colors cursor-pointer"
+                    title="Delete this expense"
+                  >
+                    <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
-        </>
-      ) : (
-        <div>no expenses</div>
+        </div>
       )}
+
+      {/* Empty State */}
+      {expenses.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 state-panel border-dashed border-2 border-border-light">
+          <FontAwesomeIcon icon={faClock} className="text-4xl text-muted-foreground mb-3" />
+          <p className="text-foreground font-medium">No expenses yet</p>
+          <p className="text-muted-foreground text-sm">Create an expense to get started</p>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDeleteDialog
+        isOpen={deleteDialog.isOpen}
+        itemName={deleteDialog.expense?.item}
+        isLoading={deleteDialog.isLoading}
+        onConfirm={handleConfirmDelete}
+        onCancel={closeDeleteDialog}
+      />
     </div>
   );
 }

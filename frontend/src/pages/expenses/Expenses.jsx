@@ -1,14 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faHome } from "@fortawesome/free-solid-svg-icons";
+import { faArrowLeft, faHome } from "@fortawesome/free-solid-svg-icons";
 import ExpenseList from "./components/ExpenseList.jsx";
 import BalanceSheet from "./components/BalanceSheet.jsx";
 import ExpenseEditModal from "./components/EditModal.jsx";
 import ExpenseForm from "./components/ExpenseForm.jsx";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { calculateTransactionsFromExpenses } from "./utils/expenseUtils.js";
 
 function Expenses() {
+  const navigate = useNavigate();
   const { roomId } = useParams();
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -152,22 +153,36 @@ function Expenses() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen page-shell">
       <div className="relative">
         {/* Header */}
-        <nav className="border-b border-border bg-card">
+        <nav className="navbar-expense sticky top-0 z-30">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                  <FontAwesomeIcon
-                    icon={faHome}
-                    className="text-primary-foreground text-lg"
-                  />
-                </div>
-                <span className="text-xl font-bold text-foreground">
+            <div className="grid grid-cols-3 items-center h-16">
+              <div className="justify-self-start">
+                <button
+                  onClick={() => navigate("/")}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors duration-200"
+                >
+                  <FontAwesomeIcon icon={faHome} />
+                  <span className="hidden sm:inline">Home</span>
+                </button>
+              </div>
+
+              <div className="justify-self-center">
+                <h1 className="text-lg font-semibold text-primary-foreground">
                   ExpenseTracker
-                </span>
+                </h1>
+              </div>
+
+              <div className="justify-self-end">
+                <button
+                  onClick={() => navigate("/rooms")}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-primary-foreground hover:bg-primary-hover transition-colors duration-200"
+                >
+                  <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
+                  <span className="hidden sm:inline">Back to Rooms</span>
+                </button>
               </div>
             </div>
           </div>

@@ -37,6 +37,7 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
       throw new Error("No members in this room");
     }
 
+    //TODO: decimal issue 
     const shareAmount = price / members.length;
 
     // Insert expense

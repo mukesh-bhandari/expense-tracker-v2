@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../contexts/AuthContext.jsx";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUser,
@@ -17,6 +18,7 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
+  const { setIsAuthenticated } = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,6 +35,8 @@ function Login() {
       const data = await response.json();
 
       if (response.ok) {
+        // Update auth context immediately after successful login
+        setIsAuthenticated(true);
         navigate("/rooms");
       } else {
         setError(data.message || "Login failed. Please try again.");
@@ -46,25 +50,26 @@ function Login() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-          <FontAwesomeIcon
-            icon={faSignInAlt}
-            className="text-primary-foreground text-2xl"
-          />
+    <div className="min-h-screen page-shell flex items-center justify-center px-4 py-12">
+      <div className="page-shell-content w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
+            <FontAwesomeIcon
+              icon={faSignInAlt}
+              className="text-primary-foreground text-2xl"
+            />
+          </div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">
+            Welcome Back
+          </h1>
+          <p className="text-muted-foreground">
+            Sign in to your expense tracker account
+          </p>
         </div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">
-          Welcome Back
-        </h1>
-        <p className="text-muted-foreground">
-          Sign in to your expense tracker account
-        </p>
-      </div>
 
-      {/* Login Form */}
-      <div className="expense-form p-8">
+        {/* Login Form */}
+        <div className="expense-form p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Error Message */}
           {error && (
@@ -174,10 +179,11 @@ function Login() {
           </div> */}
 
           <div>
-            <p> Dont have an account? Sign Up</p>
+            <p className="text-sm text-muted-foreground">Dont have an account?</p>
             <button
               onClick={() => navigate("/signup")}
-              className="text-sm text-blue-600 hover:underline mt-2"
+              type="button"
+              className="text-sm text-primary hover:text-primary/80 font-medium transition-colors duration-200 mt-2"
             >
               Create an account
             </button>
@@ -223,6 +229,7 @@ function Login() {
           <p className="text-sm text-muted-foreground">
             Secure login for your expense tracking platform
           </p>
+        </div>
         </div>
       </div>
     </div>

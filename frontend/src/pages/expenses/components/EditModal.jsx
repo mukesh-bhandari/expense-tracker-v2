@@ -168,7 +168,7 @@ function ExpenseEditModal({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed left-0 top-0 w-lvw h-lvh bg-slate-300/50 z-40 duration-300"
+        className="fixed inset-0 modal-backdrop z-40 duration-300"
         onClick={onClose} // ===== CALLBACK TO PARENT =====
       />
       
@@ -228,13 +228,13 @@ function ExpenseEditModal({
               <div className="flex flex-col gap-2 pt-2">
                 <button
                   onClick={handleDivideEqually}
-                  className="px-4 py-2 text-sm font-medium border border-border rounded-lg hover:bg-secondary transition-colors duration-200 text-foreground"
+                  className="px-4 py-2 text-sm font-medium btn-secondary-expense"
                 >
                   Distribute Equally
                 </button>
                 <button
                   onClick={handleCustomDistribution}
-                  className="px-4 py-2 text-sm font-medium border rounded-lg hover:bg-secondary transition-colors duration-200 text-foreground bg-primary/10 border-primary/20"
+                  className="px-4 py-2 text-sm font-medium btn-secondary-expense bg-primary-light text-primary border-primary/20"
                 >
                   Custom Distribution
                 </button>
@@ -247,15 +247,15 @@ function ExpenseEditModal({
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Remaining:</span>
-                  <span className={`font-medium ${getRemainingAmount() < 0 ? 'text-red-500' : 'text-green-600'}`}>
+                  <span className={`font-medium ${getRemainingAmount() < 0 ? 'text-expense' : 'text-income'}`}>
                     NPR {getRemainingAmount().toFixed(2)}
                   </span>
                 </div>
                 {getRemainingAmount() < 0 && (
-                  <p className="text-xs text-red-500">⚠️ Total allocated exceeds expense amount</p>
+                  <p className="text-xs text-expense">⚠️ Total allocated exceeds expense amount</p>
                 )}
                 {getRemainingAmount() > 0.01 && (
-                  <p className="text-xs text-yellow-600">⚠️ Total allocated is less than expense amount</p>
+                  <p className="text-xs text-warning">⚠️ Total allocated is less than expense amount</p>
                 )}
               </div>
             </div>

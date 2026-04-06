@@ -7,7 +7,7 @@ router.post("/create-room", authenticateUser, async (req, res) => {
   const userId = req.user.id;
   const { name } = req.body;
   try {
-    // if room already esists what to do
+    //TODO: if room already esists what to do
     const result = await pool.query(
       "INSERT INTO rooms (name) VALUES ($1) RETURNING *",
       [name]
@@ -19,7 +19,14 @@ router.post("/create-room", authenticateUser, async (req, res) => {
       [room.id, userId]
     );
 
-    return res.json({data: room });
+    // Return formatted data to match the my-rooms endpoint
+    const formattedRoom = {
+      room_id: room.id,
+      room_name: room.name,
+      member_count: 1 // Just created, so only 1 member (creator)
+    };
+
+    return res.json({data: formattedRoom });
   } catch (error) {
     res.status(500).json({ error: "error creating room", details: error.message });
   }

@@ -24,7 +24,13 @@ function InviteAccept() {
     if (isAuthenticated === false) {
       // Not authenticated - redirect to signup with invite link
       const redirectUrl = `/invite/accept?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
-      navigate(`/signup?redirect=${encodeURIComponent(redirectUrl)}`);
+      const params = new URLSearchParams({
+        redirect: redirectUrl,
+      });
+      if (email) {
+        params.set("email", email);
+      }
+      navigate(`/signup?${params.toString()}`);
       return;
     }
 
@@ -88,58 +94,58 @@ function InviteAccept() {
 
   if (isAuthenticated === null) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="min-h-screen page-shell flex items-center justify-center p-4">
         <div className="text-center">
-          <FontAwesomeIcon icon={faSpinner} className="text-4xl text-blue-600 mb-4 animate-spin" />
-          <p className="text-slate-600">Loading...</p>
+          <FontAwesomeIcon icon={faSpinner} className="text-4xl text-primary mb-4 animate-spin" />
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 p-4">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-8">
+    <div className="min-h-screen page-shell flex items-center justify-center p-4">
+      <div className="bg-card rounded-xl shadow-xl max-w-md w-full p-8 border border-border">
         {status === "loading" && (
           <div className="text-center">
-            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-blue-600 mb-4 animate-spin" />
-            <h2 className="text-2xl font-semibold text-slate-900 mb-2">Processing Invite</h2>
-            <p className="text-slate-600">Please wait...</p>
+            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-primary mb-4 animate-spin" />
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Processing Invite</h2>
+            <p className="text-muted-foreground">Please wait...</p>
           </div>
         )}
 
         {status === "verifying" && (
           <div className="text-center">
-            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-blue-600 mb-4 animate-spin" />
-            <h2 className="text-2xl font-semibold text-slate-900 mb-2">Verifying Invite</h2>
-            <p className="text-slate-600">Checking your invite link...</p>
+            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-primary mb-4 animate-spin" />
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Verifying Invite</h2>
+            <p className="text-muted-foreground">Checking your invite link...</p>
           </div>
         )}
 
         {status === "accepting" && (
           <div className="text-center">
-            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-blue-600 mb-4 animate-spin" />
-            <h2 className="text-2xl font-semibold text-slate-900 mb-2">Accepting Invite</h2>
-            <p className="text-slate-600">Adding you to the room...</p>
+            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-primary mb-4 animate-spin" />
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Accepting Invite</h2>
+            <p className="text-muted-foreground">Adding you to the room...</p>
           </div>
         )}
 
         {status === "accepted" && (
           <div className="text-center">
-            <FontAwesomeIcon icon={faCheckCircle} className="text-5xl text-green-600 mb-4" />
-            <h2 className="text-2xl font-semibold text-slate-900 mb-2">Invite Accepted!</h2>
-            <p className="text-slate-600">Redirecting to your room...</p>
+            <FontAwesomeIcon icon={faCheckCircle} className="text-5xl text-income mb-4" />
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Invite Accepted!</h2>
+            <p className="text-muted-foreground">Redirecting to your room...</p>
           </div>
         )}
 
         {status === "error" && (
           <div className="text-center">
-            <FontAwesomeIcon icon={faExclamationCircle} className="text-5xl text-red-600 mb-4" />
-            <h2 className="text-2xl font-semibold text-slate-900 mb-2">Invite Error</h2>
-            <p className="text-red-600 mb-6">{error}</p>
+            <FontAwesomeIcon icon={faExclamationCircle} className="text-5xl text-expense mb-4" />
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Invite Error</h2>
+            <p className="text-expense mb-6">{error}</p>
             <button
               onClick={() => navigate("/rooms")}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition-colors font-medium"
+              className="btn-primary-expense px-6 py-2 font-medium"
             >
               Back to Rooms
             </button>

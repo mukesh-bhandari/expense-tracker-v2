@@ -125,15 +125,15 @@ function WelcomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen page-shell">
       {/* Header */}
-      <div className="border-b border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-border bg-card/95 backdrop-blur-sm shadow-sm">
         <div className="max-w-6xl mx-auto px-6 py-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold text-slate-900">ExpenseTracker</h1>
+            <h1 className="text-3xl font-bold text-foreground">ExpenseTracker</h1>
             <button
               onClick={() => setShowCreateDialog(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+              className="btn-primary-expense px-4 py-2 text-sm font-semibold"
             >
               <FontAwesomeIcon icon={faPlus} />
               Create Room
@@ -145,24 +145,24 @@ function WelcomePage() {
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-12">
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <div className="mb-6 p-4 rounded-lg border border-expense/20 bg-expense-light text-expense">
             {error}
           </div>
         )}
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-blue-600 mb-4 animate-spin" />
-            <p className="text-slate-600">Loading your rooms...</p>
+            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-primary mb-4 animate-spin" />
+            <p className="text-muted-foreground">Loading your rooms...</p>
           </div>
         ) : rooms.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 bg-white rounded-lg border border-slate-200">
-            <FontAwesomeIcon icon={faUsers} className="text-5xl text-slate-300 mb-4" />
-            <h2 className="text-2xl font-semibold text-slate-900 mb-2">No Rooms Yet</h2>
-            <p className="text-slate-600 mb-6">Create your first expense tracking room to get started.</p>
+          <div className="flex flex-col items-center justify-center py-16 state-panel">
+            <FontAwesomeIcon icon={faUsers} className="text-5xl text-muted-foreground mb-4" />
+            <h2 className="text-2xl font-semibold text-foreground mb-2">No Rooms Yet</h2>
+            <p className="text-muted-foreground mb-6">Create your first expense tracking room to get started.</p>
             <button
               onClick={() => setShowCreateDialog(true)}
-              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition-colors font-medium"
+              className="btn-primary-expense px-6 py-3 font-medium"
             >
               <FontAwesomeIcon icon={faPlus} />
               Create Your First Room
@@ -173,12 +173,12 @@ function WelcomePage() {
             {rooms.map((room) => (
               <div
                 key={room.room_id}
-                className="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden group"
+                className="state-panel overflow-hidden hover:shadow-md transition-shadow group"
               >
                 {/* Room Header */}
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-6 text-white">
+                <div className="bg-primary p-6 text-primary-foreground">
                   <h3 className="text-xl font-semibold mb-1">{room.room_name}</h3>
-                  <div className="flex items-center gap-2 text-blue-100 text-sm">
+                  <div className="flex items-center gap-2 text-primary-foreground/80 text-sm">
                     <FontAwesomeIcon icon={faUsers} />
                     <span>{room.member_count} member{room.member_count !== 1 ? "s" : ""}</span>
                   </div>
@@ -188,7 +188,7 @@ function WelcomePage() {
                 <div className="p-4 flex gap-3">
                   <button
                     onClick={() => handleRoomClick(room.room_id)}
-                    className="flex-1 flex items-center justify-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-600 px-4 py-2 rounded-lg transition-colors font-medium"
+                    className="flex-1 flex items-center justify-center gap-2 btn-secondary-expense px-4 py-2 font-medium"
                   >
                     Open
                     <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
@@ -198,7 +198,7 @@ function WelcomePage() {
                       setSelectedRoomId(room.room_id);
                       setShowInviteDialog(true);
                     }}
-                    className="flex-1 flex items-center justify-center gap-2 bg-green-50 hover:bg-green-100 text-green-600 px-4 py-2 rounded-lg transition-colors font-medium"
+                    className="flex-1 flex items-center justify-center gap-2 btn-secondary-expense px-4 py-2 font-medium"
                   >
                     <FontAwesomeIcon icon={faUserPlus} />
                     Invite
@@ -212,16 +212,16 @@ function WelcomePage() {
 
       {/* Create Room Dialog */}
       {showCreateDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <h2 className="text-2xl font-semibold text-slate-900 mb-4">Create New Room</h2>
+        <div className="fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-50">
+          <div className="bg-card rounded-xl shadow-xl max-w-md w-full p-6 border border-border">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">Create New Room</h2>
             <form onSubmit={handleCreateRoom}>
               <input
                 type="text"
                 placeholder="Room name (e.g., Team Project, Family Expenses)"
                 value={roomName}
                 onChange={(e) => setRoomName(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="input-financial w-full px-4 py-3 mb-4"
                 disabled={isCreating}
               />
               <div className="flex gap-3">
@@ -232,14 +232,14 @@ function WelcomePage() {
                     setRoomName("");
                     setError("");
                   }}
-                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                  className="flex-1 px-4 py-2 btn-secondary-expense font-medium"
                   disabled={isCreating}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 btn-primary-expense font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                   disabled={isCreating}
                 >
                   {isCreating && <FontAwesomeIcon icon={faSpinner} className="animate-spin" />}
@@ -253,13 +253,13 @@ function WelcomePage() {
 
       {/* Invite Dialog */}
       {showInviteDialog && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <h2 className="text-2xl font-semibold text-slate-900 mb-2">Invite Member</h2>
-            <p className="text-slate-600 mb-4">Send an invitation to join this room</p>
+        <div className="fixed inset-0 modal-backdrop flex items-center justify-center p-4 z-50">
+          <div className="bg-card rounded-xl shadow-xl max-w-md w-full p-6 border border-border">
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Invite Member</h2>
+            <p className="text-muted-foreground mb-4">Send an invitation to join this room</p>
             
             {inviteSuccess && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+              <div className="mb-4 p-3 bg-income-light border border-income/20 rounded-lg text-income text-sm">
                 ✓ {inviteSuccess}
               </div>
             )}
@@ -270,7 +270,7 @@ function WelcomePage() {
                 placeholder="Enter email address"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg px-4 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="input-financial w-full px-4 py-3 mb-4"
                 disabled={isInviting}
               />
               <div className="flex gap-3">
@@ -282,14 +282,14 @@ function WelcomePage() {
                     setInviteSuccess("");
                     setError("");
                   }}
-                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors font-medium"
+                  className="flex-1 px-4 py-2 btn-secondary-expense font-medium"
                   disabled={isInviting}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                  className="flex-1 px-4 py-2 btn-primary-expense font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                   disabled={isInviting}
                 >
                   {isInviting && <FontAwesomeIcon icon={faSpinner} className="animate-spin" />}

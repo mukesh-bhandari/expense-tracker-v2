@@ -15,7 +15,7 @@ function BalanceSheet({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed left-0 top-0 w-lvw h-lvh bg-slate-300/50 z-40 duration-300"
+        className="fixed inset-0 modal-backdrop z-40 duration-300"
         onClick={onClose} // ===== CALLBACK TO PARENT =====
       />
       

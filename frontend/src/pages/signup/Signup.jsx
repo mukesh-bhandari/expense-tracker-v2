@@ -37,10 +37,18 @@ function Signup() {
   const [searchParams] = useSearchParams();
   const { setIsAuthenticated } = useContext(AuthContext);
   const otpRefs = useRef([]);
+  const inviteEmail = searchParams.get("email") || "";
   
   // Decode the redirect URL if it exists
   const encodedRedirect = searchParams.get("redirect");
   const redirectUrl = encodedRedirect ? decodeURIComponent(encodedRedirect) : null;
+
+  // Prefill invite email when user is redirected from invite flow.
+  useEffect(() => {
+    if (inviteEmail) {
+      setEmail(inviteEmail);
+    }
+  }, [inviteEmail]);
 
   // Timer for resend OTP
   useEffect(() => {
@@ -477,18 +485,19 @@ function Signup() {
   const { title, description } = getStepInfo();
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <div className="w-16 h-16 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
-          <FontAwesomeIcon icon={faUserPlus} className="text-primary-foreground text-2xl" />
+    <div className="min-h-screen page-shell flex items-center justify-center px-4 py-12">
+      <div className="page-shell-content w-full max-w-md">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
+            <FontAwesomeIcon icon={faUserPlus} className="text-primary-foreground text-2xl" />
+          </div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">{title}</h1>
+          <p className="text-muted-foreground">{description}</p>
         </div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">{title}</h1>
-        <p className="text-muted-foreground">{description}</p>
-      </div>
 
-      {/* Signup Form */}
-      <div className="expense-form p-8">
+        {/* Signup Form */}
+        <div className="expense-form p-8">
         {/* Back Button */}
         {currentStep > 1 && (
           <button
@@ -516,11 +525,13 @@ function Signup() {
             Already have an account?{" "}
             <button
               onClick={() => navigate("/login")}
+              type="button"
               className="text-primary hover:text-primary/80 font-medium transition-colors duration-200"
             >
               Sign in here
             </button>
           </p>
+        </div>
         </div>
       </div>
     </div>
