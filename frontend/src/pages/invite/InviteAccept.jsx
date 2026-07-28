@@ -14,6 +14,7 @@ function InviteAccept() {
 
   const token = searchParams.get("token");
   const email = searchParams.get("email");
+  const inviteRoomId = searchParams.get("roomId");
 
   useEffect(() => {
     if (isAuthenticated === null) {
@@ -23,7 +24,7 @@ function InviteAccept() {
 
     if (isAuthenticated === false) {
       // Not authenticated - redirect to signup with invite link
-      const redirectUrl = `/invite/accept?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`;
+      const redirectUrl = `/invite/accept?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}${inviteRoomId ? `&roomId=${inviteRoomId}` : ''}`;
       const params = new URLSearchParams({
         redirect: redirectUrl,
       });
@@ -50,7 +51,7 @@ function InviteAccept() {
 
       // First verify the token
       const verifyResponse = await fetch(
-        `/api/invite/verify-token?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`,
+        `/api/invite/verify-token?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}${inviteRoomId ? `&roomId=${inviteRoomId}` : ''}`,
         { credentials: "include" }
       );
 
@@ -70,7 +71,7 @@ function InviteAccept() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, email }),
+        body: JSON.stringify({ token, email, roomId: inviteRoomId }),
       });
 
       if (!acceptResponse.ok) {

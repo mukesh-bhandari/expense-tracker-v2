@@ -37,8 +37,11 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
       throw new Error("No members in this room");
     }
 
-    //TODO: decimal issue 
-    const shareAmount = price / members.length;
+    // Calculate share with proper rounding - last member gets the remainder
+    const priceNum = parseFloat(price);
+    const memberCount = members.length;
+    const baseShare = Math.floor((priceNum / memberCount) * 100) / 100;
+    const remainder = Math.round((priceNum - baseShare * memberCount) * 100) / 100;
 
     // Insert expense
     const expenseResult = await client.query(
@@ -50,18 +53,22 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
 
     // Insert expense shares for each member
     await Promise.all(
-      members.map((member) =>
-        client.query(
+      members.map((member, index) => {
+        // Last member gets the remainder to ensure sum = price exactly
+        const share = index === memberCount - 1
+          ? Math.round((baseShare + remainder) * 100) / 100
+          : baseShare;
+        return client.query(
           `INSERT INTO expense_shares (expense_id, user_id, amount_owed, is_paid) 
            VALUES ($1, $2, $3, $4)`,
           [
             expense.id,
             member.user_id,
-            shareAmount,
+            share,
             member.user_id === paidBy,
           ]
-        )
-      )
+        );
+      })
     );
 
     // Get expense details for response
@@ -139,12 +146,25 @@ router.get("/:roomId/get-expenses", authenticateUser, authorizeRoomMember, async
   }
 });
 
-router.post("/save-states", authenticateUser, authorizeRoomMember, async (req, res) => {
+router.post("/:roomId/save-states", authenticateUser, authorizeRoomMember, async (req, res) => {
+  const { roomId } = req.params;
   const { expenses } = req.body;
 
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+
+    // Validate all expenses belong to this room
+    const expenseIds = expenses.map((e) => e.id);
+    const ownershipResult = await client.query(
+      `SELECT id FROM expenses WHERE id = ANY($1) AND room_id = $2`,
+      [expenseIds, roomId]
+    );
+
+    if (ownershipResult.rows.length !== expenseIds.length) {
+      await client.query("ROLLBACK");
+      return res.status(403).json({ error: "One or more expenses do not belong to this room" });
+    }
 
     // Update all splits
     await Promise.all(

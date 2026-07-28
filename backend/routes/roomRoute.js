@@ -1,6 +1,7 @@
 const pool = require("../config/db");
 const express = require("express");
 const authenticateUser = require("../middleware/auth")
+const authorizeRoomMember = require("../middleware/roomAuth");
 const router = express.Router();
 
 router.post("/create-room", authenticateUser, async (req, res) => {
@@ -56,7 +57,7 @@ router.get("/my-rooms", authenticateUser, async (req, res) => {
   }
 });
 
-router.get("/:roomId/members", authenticateUser, async (req, res) => {
+router.get("/:roomId/members", authenticateUser, authorizeRoomMember, async (req, res) => {
   const roomId = parseInt(req.params.roomId); // PARSE STRING TO INTEGER
   
   // Check if roomId is valid

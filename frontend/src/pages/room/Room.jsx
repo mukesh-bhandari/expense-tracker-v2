@@ -31,7 +31,6 @@ function WelcomePage() {
       });
       if (response.ok) {
         const data = await response.json();
-        console.log("Fetched rooms:", data);
         setRooms(data);
       } else {
         setError("Failed to load rooms. Please try again.");

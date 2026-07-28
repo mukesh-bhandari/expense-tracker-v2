@@ -19,7 +19,7 @@ router.post("/send-invite", authenticateUser, async (req, res) => {
     );
 
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
-    const inviteLink = `${frontendUrl}/invite/accept?token=${token}&email=${encodeURIComponent(email)}`;
+    const inviteLink = `${frontendUrl}/invite/accept?token=${token}&email=${encodeURIComponent(email)}&roomId=${roomId}`;
     
     await sendInviteEmail(email, inviteLink);
     res.json({ message: "invite sent" });
@@ -29,18 +29,20 @@ router.post("/send-invite", authenticateUser, async (req, res) => {
 });
 
 router.get("/verify-token", async (req, res) => {
-  const { token, email } = req.query;
+  const { token, email, roomId } = req.query;
 
   try {
     if (!token || !email) {
       return res.status(400).json({ error: "Missing token or email" });
     }
 
-    // Find pending invite by email
-    const result = await pool.query(
-      "SELECT * FROM invitation WHERE email = $1 AND status = 'pending'",
-      [email]
-    );
+    let query = "SELECT * FROM invitation WHERE email = $1 AND status = 'pending'";
+    let params = [email];
+    if (roomId) {
+      query += " AND room_id = $2";
+      params.push(roomId);
+    }
+    const result = await pool.query(query, params);
 
     if (result.rows.length === 0) {
       return res.status(400).json({ error: "No pending invite for this email" });
@@ -72,15 +74,17 @@ router.get("/verify-token", async (req, res) => {
 });
 
 router.post("/accept-invite", authenticateUser, async (req, res) => {
-  const { token, email } = req.body;
+  const { token, email, roomId } = req.body;
   const userId = req.user.id;
 
   try {
-    // Find invite by email
-    const result = await pool.query(
-      "SELECT * FROM invitation WHERE email = $1 AND status = 'pending'",
-      [email]
-    );
+    let query = "SELECT * FROM invitation WHERE email = $1 AND status = 'pending'";
+    let params = [email];
+    if (roomId) {
+      query += " AND room_id = $2";
+      params.push(roomId);
+    }
+    const result = await pool.query(query, params);
 
     if (result.rows.length === 0) {
       return res.status(400).json({ error: "No pending invite for this email" });

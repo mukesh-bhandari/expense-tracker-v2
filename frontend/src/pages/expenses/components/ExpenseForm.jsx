@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { NepaliDatePicker } from "nepali-datepicker-reactjs";
 import { useParams } from "react-router-dom";
+import { useToast } from "../../../components/Toast.jsx";
 
 function ExpenseForm({ members, onAddExpense }) {
   const { roomId } = useParams();
+  const toast = useToast();
 
   const [item, setItem] = useState("");
   const [price, setPrice] = useState("");
@@ -16,23 +18,8 @@ function ExpenseForm({ members, onAddExpense }) {
     if (isAdding) return;
     setIsAdding(true);
 
-    console.log("Form values:", { item, price, paidBy });
-    console.log("Falsy checks:", {
-      "!item": !item,
-      "!price": !price,
-      "!paidBy": !paidBy,
-    });
-
     if (!item || !price || !paidBy) {
-      console.log(
-        "❌ Missing required fields - item:",
-        item,
-        "price:",
-        price,
-        "paidBy:",
-        paidBy,
-      );
-      setIsAdding(false); // RESET HERE IF VALIDATION FAILS
+      setIsAdding(false);
       return;
     }
 
@@ -56,19 +43,17 @@ function ExpenseForm({ members, onAddExpense }) {
       }
 
       const data = await response.json();
-      console.log("✅ Expense added:", data.expense);
       onAddExpense(data.expense);
 
-      // Clear form
       setItem("");
       setPrice("");
       setPaidBy("");
       setDate("");
     } catch (error) {
-      console.error("❌ Error adding expense:", error);
-      alert("Failed to add expense");
+      console.error("Error adding expense:", error);
+      toast("Failed to add expense", "error");
     } finally {
-      setIsAdding(false); // ALWAYS RESET STATE
+      setIsAdding(false);
     }
   };
 

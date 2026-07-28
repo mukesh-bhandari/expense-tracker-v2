@@ -184,6 +184,10 @@ router.post("/login", async (req, res) => {
 
 router.post("/logout", async (req, res) => {
   try {
+    const refreshToken = req.cookies?.refreshToken;
+    if (refreshToken) {
+      await pool.query("DELETE FROM refresh_tokens WHERE token = $1", [refreshToken]);
+    }
     res.clearCookie("accessToken", {
       httpOnly: true,
       secure: true,

@@ -19,7 +19,6 @@ function Expenses() {
   const [editingExpense, setEditingExpense] = useState(null);
 
   useEffect(() => {
-    console.log("💡 Expenses component mounted with roomId:", roomId);
     if (roomId) {
       fetchRoomMembers();
       fetchExpenses();
@@ -33,7 +32,6 @@ function Expenses() {
       });
       if (response.ok) {
         const data = await response.json();
-        console.log("Fetched room members:", data);
         setMembers(data);
       }
     } catch (error) {
@@ -48,46 +46,35 @@ function Expenses() {
       });
       if (response.ok) {
         const data = await response.json();
-        console.log("Fetched expenses:", data);
-        // Data already comes with splits from backend
         setExpenses(data);
       }
     } catch (error) {
-      console.log("Error fetching expenses:", error);
+      console.error("Error fetching expenses:", error);
     }
   };
 
-  // ===== MODAL CALLBACKS =====
-
   const handleOpenBalanceSheet = () => {
-    console.log("View Balances clicked, calculating transactions...");
     const transactions = calculateTransactionsFromExpenses(expenses);
-    console.log("Calculated transactions:", transactions);
     setNetTransactions(transactions);
     setIsBalanceSheetOpen(true);
   };
 
   const handleOpenEditModal = (expense) => {
-    console.log("ExpenseList called handleOpenEditModal callback");
     setEditingExpense(expense);
     setIsEditModalOpen(true);
   };
 
   const handleCloseBalanceSheet = () => {
-    console.log("🔒 Closing Balance Sheet modal");
     setIsBalanceSheetOpen(false);
     setNetTransactions({});
   };
 
   const handleCloseEditModal = () => {
-    console.log("🔒 Closing Edit modal");
     setIsEditModalOpen(false);
     setEditingExpense(null);
   };
 
   const handleSaveExpenseAmounts = (expenseId, updatedSplits) => {
-    console.log("💡 ExpenseEditModal called handleSaveExpenseAmounts callback");
-
     const updatedExpenses = expenses.map((expense) =>
       expense.id === expenseId
         ? { ...expense, splits: updatedSplits }
@@ -99,15 +86,10 @@ function Expenses() {
   };
 
   const handleTransactionComplete = (transactionPair) => {
-    console.log("💡 BalanceSheet called handleTransactionComplete callback");
-
     const [from, to] = transactionPair;
-    // from = first person, to = second person
-    // We need to mark ALL debts between them as paid (both directions)
 
     const updatedExpenses = expenses.map((expense) => {
       const updatedSplits = expense.splits.map((split) => {
-        // Case 1: Expense paid by "to", and "from" has an unpaid split
         if (
           expense.paid_by_username === to &&
           split.user_username === from &&
@@ -116,7 +98,6 @@ function Expenses() {
           return { ...split, is_paid: true };
         }
 
-        // Case 2: Expense paid by "from", and "to" has an unpaid split
         if (
           expense.paid_by_username === from &&
           split.user_username === to &&
@@ -133,22 +114,15 @@ function Expenses() {
 
     setExpenses(updatedExpenses);
     
-    // Recalculate transactions after marking paid
     const newTransactions = calculateTransactionsFromExpenses(updatedExpenses);
     setNetTransactions(newTransactions);
-    
-    console.log("✅ Transaction marked as paid, updated transactions:", newTransactions);
   };
 
   const handleAddExpense = (newExpense) => {
-    console.log("💡 New expense added:", newExpense);
-    // newExpense already comes with splits from backend
     setExpenses([...expenses, newExpense]);
   };
 
   const handleExpensesUpdate = (updatedExpenses) => {
-  
-    console.log("💡 Expenses updated", updatedExpenses);
     setExpenses(updatedExpenses);
   };
 
@@ -197,7 +171,6 @@ function Expenses() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <ExpenseList
-            persons={members.map((m) => m.username)}
             expenses={expenses}
             onExpensesUpdate={handleExpensesUpdate}
             onOpenBalanceSheet={handleOpenBalanceSheet}
@@ -212,14 +185,14 @@ function Expenses() {
             />
           )}
 
-          {/* {isEditModalOpen && editingExpense && (
+          {isEditModalOpen && editingExpense && (
             <ExpenseEditModal
               expense={editingExpense}
-              persons={members}
+              members={members}
               onClose={handleCloseEditModal}
               onSave={handleSaveExpenseAmounts}
             />
-          )} */}
+          )}
         </div>
       </div>
     </div>

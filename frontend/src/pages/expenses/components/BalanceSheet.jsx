@@ -2,34 +2,28 @@ import React from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faUser } from "@fortawesome/free-solid-svg-icons";
 
-
-
 function BalanceSheet({ 
   netTransactions,   
   onClose,           
   onTransactionComplete 
 }) {
-  
 
   return (
     <>
-      {/* Backdrop */}
       <div 
         className="fixed inset-0 modal-backdrop z-40 duration-300"
-        onClick={onClose} // ===== CALLBACK TO PARENT =====
+        onClick={onClose}
       />
       
-      {/* Sheet */}
       <div className="fixed top-0 right-0 h-full w-full max-w-md bg-card border-l border-border z-50 transform transition-transform duration-300 ease-out translate-x-0">
         <div className="flex flex-col h-full">
-          {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
               <FontAwesomeIcon icon={faUser} className="text-warning" />
               Outstanding Balances
             </h3>
             <button
-              onClick={onClose} // ===== CALLBACK TO PARENT =====
+              onClick={onClose}
               className="p-2 hover:bg-secondary rounded-lg transition-colors duration-200 text-muted-foreground hover:text-foreground"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -38,7 +32,6 @@ function BalanceSheet({
             </button>
           </div>
           
-          {/* Content */}
           <div className="flex-1 overflow-y-auto">
             {Object.entries(netTransactions).length > 0 ? (
               <div className="space-y-0">
@@ -65,7 +58,7 @@ function BalanceSheet({
                         
                         <button
                           className="btn-primary-expense px-3 py-1.5 text-xs font-medium"
-                          onClick={() => onTransactionComplete([from, to])} // ===== CALLBACK TO PARENT =====
+                          onClick={() => onTransactionComplete([from, to])}
                         >
                           Mark Paid
                         </button>

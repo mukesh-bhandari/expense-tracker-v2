@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faTrash, faCheck, faUser, faClock } from "@fortawesome/free-solid-svg-icons";
+import { faTrash, faCheck, faUser, faClock, faEdit } from "@fortawesome/free-solid-svg-icons";
 import ConfirmDeleteDialog from "../../../components/ConfirmDeleteDialog";
+import { useToast } from "../../../components/Toast.jsx";
 
 function ExpenseList({
   expenses = [],
@@ -9,17 +11,14 @@ function ExpenseList({
   onOpenBalanceSheet,
   onOpenEditModal,
 }) {
+  const { roomId } = useParams();
+  const toast = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, expense: null, isLoading: false });
 
   // Helper: Check if a split is skipped (amount_owed === 0)
   const isSkipped = (split) => {
     return parseFloat(split.amount_owed) === 0;
-  };
-
-  // Helper: Get count of non-skipped members for redistribution
-  const countNonSkippedMembers = (expense) => {
-    return expense.splits.filter((split) => !isSkipped(split)).length;
   };
 
   // Helper: Recalculate amounts after skipping/un-skipping
@@ -39,7 +38,7 @@ function ExpenseList({
 
     if (nonSkippedCount === 0) return expense.splits; // Everyone is skipped, no redistribution
 
-    const newAmountPerPerson = expense.price / nonSkippedCount;
+    const newAmountPerPerson = Math.round((expense.price / nonSkippedCount) * 100) / 100;
 
     return expense.splits.map((split) => {
       const isCurrentSkipped = isSkipped(split);
@@ -114,12 +113,12 @@ function ExpenseList({
         onExpensesUpdate(updatedExpenses);
         closeDeleteDialog();
       } else {
-        alert("Failed to delete expense");
+        toast("Failed to delete expense", "error");
         setDeleteDialog((prev) => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
       console.error("Error deleting expense:", error);
-      alert("Failed to delete expense");
+      toast("Failed to delete expense", "error");
       setDeleteDialog((prev) => ({ ...prev, isLoading: false }));
     }
   };
@@ -145,7 +144,7 @@ function ExpenseList({
     });
 
     try {
-      const response = await fetch("/api/expenses/save-states", {
+      const response = await fetch(`/api/expenses/${roomId}/save-states`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ expenses: payload }),
@@ -153,13 +152,13 @@ function ExpenseList({
       });
 
       if (response.ok) {
-        console.log("✅ All states saved successfully");
+        // Saved successfully
       } else {
-        alert("Failed to save changes");
+        toast("Failed to save changes", "error");
       }
     } catch (error) {
       console.error("Error saving states:", error);
-      alert("Failed to save changes");
+      toast("Failed to save changes", "error");
     } finally {
       setIsSaving(false);
     }
@@ -265,6 +264,15 @@ function ExpenseList({
                       );
                     })}
                   </div>
+
+                  {/* Edit Button */}
+                  <button
+                    onClick={() => onOpenEditModal(expense)}
+                    className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
+                    title="Edit splits"
+                  >
+                    <FontAwesomeIcon icon={faEdit} className="text-sm" />
+                  </button>
 
                   {/* Delete Button */}
                   <button

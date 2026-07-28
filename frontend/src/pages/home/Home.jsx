@@ -248,7 +248,7 @@ function Home() {
             </div>
             
             <div className="text-muted-foreground text-sm">
-              © 2025 ExpenseTracker. All rights reserved.
+              © 2026 ExpenseTracker. All rights reserved.
             </div>
           </div>
         </div>
