@@ -21,8 +21,9 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
     dateToInsert = BS.ADToBS(currentDate);
   }
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query("BEGIN");
 
     // Get members first and validate
@@ -56,20 +57,18 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
     const expense = expenseResult.rows[0];
 
     // Insert expense shares for each member
-    await Promise.all(
-      members.map((member) => {
-        return client.query(
-          `INSERT INTO expense_shares (expense_id, user_id, amount_owed, is_paid) 
-           VALUES ($1, $2, $3, $4)`,
-          [
-            expense.id,
-            member.user_id,
-            roundedShare,
-            member.user_id === paidBy,
-          ]
-        );
-      })
-    );
+    for (const member of members) {
+      await client.query(
+        `INSERT INTO expense_shares (expense_id, user_id, amount_owed, is_paid) 
+         VALUES ($1, $2, $3, $4)`,
+        [
+          expense.id,
+          member.user_id,
+          roundedShare,
+          member.user_id === paidBy,
+        ]
+      );
+    }
 
     // Get expense details for response
     const expenseDetailsResult = await client.query(
@@ -99,11 +98,13 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
       expense: newExpense,
     });
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (client) {
+      try { await client.query("ROLLBACK"); } catch (_) {}
+    }
     console.error("Error adding expense:", error);
     res.status(500).json({ error: error.message || "Error adding expense" });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 
@@ -150,8 +151,9 @@ router.post("/:roomId/save-states", authenticateUser, authorizeRoomMember, async
   const { roomId } = req.params;
   const { expenses } = req.body;
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query("BEGIN");
 
     // Validate all expenses belong to this room
@@ -162,52 +164,51 @@ router.post("/:roomId/save-states", authenticateUser, authorizeRoomMember, async
     );
 
     if (ownershipResult.rows.length !== expenseIds.length) {
-      await client.query("ROLLBACK");
+      try { await client.query("ROLLBACK"); } catch (_) {}
       return res.status(403).json({ error: "One or more expenses do not belong to this room" });
     }
 
-    // Update all splits
-    await Promise.all(
-      expenses.flatMap((expense) =>
-        expense.splits.map((split) =>
-          client.query(
-            `UPDATE expense_shares 
-             SET amount_owed = $1, is_paid = $2 
-             WHERE id = $3`,
-            [split.amount_owed, split.is_paid, split.id]
-          )
-        )
-      )
-    );
+    // Update all splits sequentially
+    for (const expense of expenses) {
+      for (const split of expense.splits) {
+        await client.query(
+          `UPDATE expense_shares 
+           SET amount_owed = $1, is_paid = $2 
+           WHERE id = $3`,
+          [split.amount_owed, split.is_paid, split.id]
+        );
+      }
+    }
 
-    // Update transaction_complete status for expenses
-    await Promise.all(
-      expenses.map((expense) =>
-        client.query(
-          `UPDATE expenses 
-           SET transaction_complete = $1 
-           WHERE id = $2`,
-          [expense.transaction_complete, expense.id]
-        )
-      )
-    );
+    // Update transaction_complete status for expenses sequentially
+    for (const expense of expenses) {
+      await client.query(
+        `UPDATE expenses 
+         SET transaction_complete = $1 
+         WHERE id = $2`,
+        [expense.transaction_complete, expense.id]
+      );
+    }
 
     await client.query("COMMIT");
     res.json({ message: "Updated successfully" });
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (client) {
+      try { await client.query("ROLLBACK"); } catch (_) {}
+    }
     console.error("Error saving states:", error);
     res.status(500).json({ error: "Failed to save" });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 
 router.delete("/:roomId/:expenseId", authenticateUser, authorizeRoomMember, async (req, res) => {
   const { roomId, expenseId } = req.params;
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query("BEGIN");
 
     // Delete expense shares first (foreign key constraint)
@@ -223,18 +224,20 @@ router.delete("/:roomId/:expenseId", authenticateUser, authorizeRoomMember, asyn
     );
 
     if (result.rows.length === 0) {
-      await client.query("ROLLBACK");
+      try { await client.query("ROLLBACK"); } catch (_) {}
       return res.status(404).json({ error: "Expense not found" });
     }
 
     await client.query("COMMIT");
     res.json({ message: "Expense deleted successfully" });
   } catch (error) {
-    await client.query("ROLLBACK");
+    if (client) {
+      try { await client.query("ROLLBACK"); } catch (_) {}
+    }
     console.error("Error deleting expense:", error);
     res.status(500).json({ error: "Error deleting expense" });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 });
 

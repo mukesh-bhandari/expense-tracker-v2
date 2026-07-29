@@ -7,10 +7,12 @@ import ExpenseEditModal from "./components/EditModal.jsx";
 import ExpenseForm from "./components/ExpenseForm.jsx";
 import { useNavigate, useParams } from "react-router-dom";
 import { calculateTransactionsFromExpenses } from "./utils/expenseUtils.js";
+import { useToast } from "../../components/Toast.jsx";
 
 function Expenses() {
   const navigate = useNavigate();
   const { roomId } = useParams();
+  const toast = useToast();
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [netTransactions, setNetTransactions] = useState({});
@@ -74,15 +76,48 @@ function Expenses() {
     setEditingExpense(null);
   };
 
-  const handleSaveExpenseAmounts = (expenseId, updatedSplits) => {
-    const updatedExpenses = expenses.map((expense) =>
-      expense.id === expenseId
-        ? { ...expense, splits: updatedSplits }
-        : expense
+  const handleSaveExpenseAmounts = async (expenseId, updatedSplits) => {
+    const expense = expenses.find((e) => e.id === expenseId);
+    if (!expense) return;
+
+    const allCompleted = updatedSplits.every(
+      (split) => split.amount_owed === 0 || split.is_paid
     );
 
-    setExpenses(updatedExpenses);
-    handleCloseEditModal();
+    const payload = {
+      id: expenseId,
+      splits: updatedSplits.map((split) => ({
+        id: split.id,
+        amount_owed: parseFloat(split.amount_owed),
+        is_paid: split.is_paid,
+      })),
+      transaction_complete: allCompleted,
+    };
+
+    try {
+      const response = await fetch(`/api/expenses/${roomId}/save-states`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expenses: [payload] }),
+        credentials: "include",
+      });
+
+      if (response.ok) {
+        const updatedExpenses = expenses.map((exp) =>
+          exp.id === expenseId
+            ? { ...exp, splits: updatedSplits, transaction_complete: allCompleted }
+            : exp
+        );
+        setExpenses(updatedExpenses);
+        handleCloseEditModal();
+        toast("Expense updated", "success");
+      } else {
+        toast("Failed to save changes", "error");
+      }
+    } catch (error) {
+      console.error("Error saving expense:", error);
+      toast("Failed to save changes", "error");
+    }
   };
 
   const handleTransactionComplete = (transactionPair) => {
