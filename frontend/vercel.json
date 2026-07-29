@@ -2,7 +2,7 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "https://expense-tracker-v2-backend.vercel.app/api/$1"
+      "destination": "https://expense-tracker-v2-5s1l.vercel.app/api/$1"
     },
     {
       "source": "/(.*)",

@@ -13,6 +13,12 @@ router.post("/send-invite", authenticateUser, async (req, res) => {
   const hashedToken = await bcrypt.hash(token, 10);
   
   try {
+    // Remove any existing pending invite for this email+room to avoid duplicates
+    await pool.query(
+      "DELETE FROM invitation WHERE email = $1 AND room_id = $2 AND status = 'pending'",
+      [email, roomId]
+    );
+
     await pool.query(
       "INSERT INTO invitation (email, token, room_id, status, created_at) VALUES ($1, $2, $3, 'pending', NOW())",
       [email, hashedToken, roomId]
