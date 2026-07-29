@@ -36,9 +36,14 @@ function ExpenseList({
       }
     });
 
-    if (nonSkippedCount === 0) return expense.splits; // Everyone is skipped, no redistribution
+    if (nonSkippedCount === 0) return expense.splits;
 
     const newAmountPerPerson = Math.round((expense.price / nonSkippedCount) * 100) / 100;
+    const remainder = Math.round((expense.price - newAmountPerPerson * nonSkippedCount) * 100) / 100;
+
+    if (Math.abs(remainder) > 0.1) {
+      return null;
+    }
 
     return expense.splits.map((split) => {
       const isCurrentSkipped = isSkipped(split);
@@ -77,10 +82,14 @@ function ExpenseList({
 
   // Toggle skip: sets amount_owed to 0 and redistributes to others
   const handleSkip = (expense, personUsername) => {
+    const updatedSplits = recalculateAmounts(expense, personUsername);
+    if (updatedSplits === null) {
+      toast("Cannot skip — remainder would exceed 0.1 NPR", "error");
+      return;
+    }
+
     const updatedExpenses = expenses.map((exp) => {
       if (exp.id !== expense.id) return exp;
-
-      const updatedSplits = recalculateAmounts(exp, personUsername);
       return { ...exp, splits: updatedSplits };
     });
 

@@ -37,11 +37,15 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
       throw new Error("No members in this room");
     }
 
-    // Calculate share with proper rounding - last member gets the remainder
+    // Calculate share with rounding - equal for all, remainder up to 0.1 accepted
     const priceNum = parseFloat(price);
     const memberCount = members.length;
-    const baseShare = Math.floor((priceNum / memberCount) * 100) / 100;
-    const remainder = Math.round((priceNum - baseShare * memberCount) * 100) / 100;
+    const roundedShare = Math.round((priceNum / memberCount) * 100) / 100;
+    const remainder = Math.round((priceNum - roundedShare * memberCount) * 100) / 100;
+
+    if (Math.abs(remainder) > 0.1) {
+      throw new Error("Cannot split evenly — remainder exceeds 0.1 NPR. Try a different amount.");
+    }
 
     // Insert expense
     const expenseResult = await client.query(
@@ -53,18 +57,14 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
 
     // Insert expense shares for each member
     await Promise.all(
-      members.map((member, index) => {
-        // Last member gets the remainder to ensure sum = price exactly
-        const share = index === memberCount - 1
-          ? Math.round((baseShare + remainder) * 100) / 100
-          : baseShare;
+      members.map((member) => {
         return client.query(
           `INSERT INTO expense_shares (expense_id, user_id, amount_owed, is_paid) 
            VALUES ($1, $2, $3, $4)`,
           [
             expense.id,
             member.user_id,
-            share,
+            roundedShare,
             member.user_id === paidBy,
           ]
         );

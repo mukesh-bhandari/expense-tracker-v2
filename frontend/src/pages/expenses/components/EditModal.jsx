@@ -41,7 +41,7 @@ function ExpenseEditModal({ expense, members, onClose, onSave }) {
   const nonSkippedCount = rows.filter((r) => !r.skipped).length;
 
   const canSave =
-    Math.abs(remaining) <= 0.01 && nonSkippedCount >= 1;
+    Math.abs(remaining) <= 0.1 && nonSkippedCount >= 1;
 
   const handleToggleSkip = (userId) => {
     setRows((prev) =>
@@ -64,19 +64,12 @@ function ExpenseEditModal({ expense, members, onClose, onSave }) {
     const eligible = rows.filter((r) => !r.skipped);
     if (eligible.length === 0) return;
 
-    const share = priceVal / eligible.length;
-    const floored = Math.floor(share * 100) / 100;
-    const remainder = Math.round((priceVal - floored * eligible.length) * 100) / 100;
+    const share = Math.round((priceVal / eligible.length) * 100) / 100;
 
-    let remainderAssigned = false;
     setRows((prev) =>
       prev.map((row) => {
         if (row.skipped) return row;
-        if (!remainderAssigned) {
-          remainderAssigned = true;
-          return { ...row, amount: String(Math.round((floored + remainder) * 100) / 100) };
-        }
-        return { ...row, amount: String(floored) };
+        return { ...row, amount: String(share) };
       })
     );
   };
@@ -199,7 +192,7 @@ function ExpenseEditModal({ expense, members, onClose, onSave }) {
                   <span>Remaining:</span>
                   <span
                     className={`font-bold ${
-                      Math.abs(remaining) > 0.01
+                      Math.abs(remaining) > 0.1
                         ? "text-red-500"
                         : "text-income"
                     }`}
@@ -207,12 +200,12 @@ function ExpenseEditModal({ expense, members, onClose, onSave }) {
                     NPR {remaining.toFixed(2)}
                   </span>
                 </div>
-                {remaining < -0.01 && (
+                {remaining < -0.1 && (
                   <p className="text-xs font-semibold text-red-500">
                     Total exceeds expense amount — reduce allocations
                   </p>
                 )}
-                {remaining > 0.01 && (
+                {remaining > 0.1 && (
                   <p className="text-xs font-semibold text-red-500">
                     Total is less than expense amount — allocate more
                   </p>
