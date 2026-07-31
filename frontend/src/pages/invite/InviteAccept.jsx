@@ -1,6 +1,7 @@
 import { useEffect, useState, useContext } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../contexts/AuthContext";
+import { toast } from "sonner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faSpinner, faCheckCircle, faExclamationCircle } from "@fortawesome/free-solid-svg-icons";
 
@@ -58,7 +59,9 @@ function InviteAccept() {
       if (!verifyResponse.ok) {
         const data = await verifyResponse.json();
         setStatus("error");
-        setError(data.error || "Invalid invite link");
+        const msg = data.error || "Invalid invite link";
+        setError(msg);
+        toast.error(msg);
         return;
       }
 
@@ -77,11 +80,14 @@ function InviteAccept() {
       if (!acceptResponse.ok) {
         const data = await acceptResponse.json();
         setStatus("error");
-        setError(data.error || "Failed to accept invite");
+        const msg = data.error || "Failed to accept invite";
+        setError(msg);
+        toast.error(msg);
         return;
       }
 
       setStatus("accepted");
+      toast.success("Invite accepted! Redirecting...");
       // Redirect to room after 2 seconds
       setTimeout(() => {
         navigate(`/${verifyData.roomId}/expenses`);
@@ -89,7 +95,9 @@ function InviteAccept() {
     } catch (err) {
       console.error("Error during invite acceptance:", err);
       setStatus("error");
-      setError("Network error. Please try again.");
+      const msg = "Network error. Please try again.";
+      setError(msg);
+      toast.error(msg);
     }
   };
 

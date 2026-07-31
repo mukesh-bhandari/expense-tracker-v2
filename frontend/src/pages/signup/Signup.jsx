@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { AuthContext } from "../../contexts/AuthContext.jsx";
+import { toast } from "sonner";
 import { 
   faUser, 
   faLock, 
@@ -29,7 +30,6 @@ function Signup() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [error, setError] = useState("");
   const [canResendOtp, setCanResendOtp] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   
@@ -66,11 +66,10 @@ function Signup() {
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
 
     // Basic Gmail validation
     if (!email.includes("@gmail.com")) {
-      setError("Please enter a valid Gmail address.");
+      toast.error("Please enter a valid Gmail address.");
       setIsLoading(false);
       return;
     }
@@ -87,12 +86,13 @@ function Signup() {
         setCurrentStep(2);
         setResendTimer(60);
         setCanResendOtp(false);
+        toast.success("Verification code sent to your email");
       } else {
-        setError(data.message || "Failed to send OTP. Please try again.");
+        toast.error(data.message || "Failed to send OTP. Please try again.");
       }
     } catch (error) {
       console.error("Error sending OTP:", error);
-      setError("Network error. Please check your connection and try again.");
+      toast.error("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -123,11 +123,10 @@ function Signup() {
   const handleOtpSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
 
     const otpCode = otp.join("");
     if (otpCode.length !== 6) {
-      setError("Please enter the complete 6-digit OTP.");
+      toast.error("Please enter the complete 6-digit OTP.");
       setIsLoading(false);
       return;
     }
@@ -142,12 +141,13 @@ function Signup() {
       
       if (response.ok) {
         setCurrentStep(3);
+        toast.success("Email verified successfully");
       } else {
-        setError(data.message || "Invalid OTP. Please try again.");
+        toast.error(data.message || "Invalid OTP. Please try again.");
       }
     } catch (error) {
       console.error("Error verifying OTP:", error);
-      setError("Network error. Please check your connection and try again.");
+      toast.error("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -156,7 +156,6 @@ function Signup() {
   // Resend OTP
   const handleResendOtp = async () => {
     setIsLoading(true);
-    setError("");
 
     try {
       const response = await fetch("/api/auth/send-code", {
@@ -171,11 +170,12 @@ function Signup() {
         setCanResendOtp(false);
         // Focus first OTP input
         otpRefs.current[0]?.focus();
+        toast.success("New verification code sent");
       } else {
-        setError("Failed to resend OTP. Please try again.");
+        toast.error("Failed to resend OTP. Please try again.");
       }
-    } catch (error) {
-      setError("Network error. Please try again.");
+    } catch {
+      toast.error("Network error. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -185,11 +185,10 @@ function Signup() {
   const handleSignupComplete = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
 
     // Password confirmation check
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      toast.error("Passwords do not match.");
       setIsLoading(false);
       return;
     }
@@ -206,14 +205,15 @@ function Signup() {
       if (response.ok) {
         // Signup successful = already authenticated with correct credentials
         setIsAuthenticated(true);
+        toast.success("Account created successfully!");
         // Redirect to the stored URL or dashboard if no redirect was provided
         navigate(redirectUrl || "/rooms");
       } else {
-        setError(data.message || "Signup failed. Please try again.");
+        toast.error(data.message || "Signup failed. Please try again.");
       }
     } catch (error) {
       console.error("Error completing signup:", error);
-      setError("Network error. Please check your connection and try again.");
+      toast.error("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -223,7 +223,6 @@ function Signup() {
   const goBack = () => {
     if (currentStep > 1) {
       setCurrentStep(currentStep - 1);
-      setError("");
     }
   };
 
@@ -507,13 +506,6 @@ function Signup() {
             <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
             Back
           </button>
-        )}
-
-        {/* Error Message */}
-        {error && (
-          <div className="p-4 rounded-lg bg-expense-light border border-expense text-expense text-sm mb-6">
-            {error}
-          </div>
         )}
 
         {/* Step Content */}

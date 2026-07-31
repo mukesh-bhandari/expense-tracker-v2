@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faPlus, faUserPlus, faSpinner, faUsers, faChevronRight } from "@fortawesome/free-solid-svg-icons";
 
 function WelcomePage() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [selectedRoomId, setSelectedRoomId] = useState(null);
@@ -14,7 +14,6 @@ function WelcomePage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isInviting, setIsInviting] = useState(false);
-  const [inviteSuccess, setInviteSuccess] = useState("");
   const navigate = useNavigate();
 
   // Fetch user's rooms on mount
@@ -25,7 +24,6 @@ function WelcomePage() {
   const fetchRooms = async () => {
     try {
       setLoading(true);
-      setError("");
       const response = await fetch("/api/rooms/my-rooms", {
         credentials: "include",
       });
@@ -33,11 +31,11 @@ function WelcomePage() {
         const data = await response.json();
         setRooms(data);
       } else {
-        setError("Failed to load rooms. Please try again.");
+        toast.error("Failed to load rooms. Please try again.");
       }
     } catch (err) {
       console.error("Error fetching rooms:", err);
-      setError("Network error. Please check your connection.");
+      toast.error("Network error. Please check your connection.");
     } finally {
       setLoading(false);
     }
@@ -46,12 +44,11 @@ function WelcomePage() {
   const handleCreateRoom = async (e) => {
     e.preventDefault();
     if (!roomName.trim()) {
-      setError("Room name cannot be empty");
+      toast.error("Room name cannot be empty");
       return;
     }
 
     setIsCreating(true);
-    setError("");
 
     try {
       const response = await fetch("/api/rooms/create-room", {
@@ -66,13 +63,14 @@ function WelcomePage() {
         setRooms([...rooms, data.data]);
         setRoomName("");
         setShowCreateDialog(false);
+        toast.success("Room created successfully!");
       } else {
         const errorData = await response.json();
-        setError(errorData.error || "Failed to create room.");
+        toast.error(errorData.error || "Failed to create room.");
       }
     } catch (err) {
       console.error("Error creating room:", err);
-      setError("Network error. Please try again.");
+      toast.error("Network error. Please try again.");
     } finally {
       setIsCreating(false);
     }
@@ -81,13 +79,11 @@ function WelcomePage() {
   const handleInvite = async (e) => {
     e.preventDefault();
     if (!inviteEmail.trim()) {
-      setError("Email cannot be empty");
+      toast.error("Email cannot be empty");
       return;
     }
 
     setIsInviting(true);
-    setError("");
-    setInviteSuccess("");
 
     try {
       const response = await fetch("/api/invite/send-invite", {
@@ -101,19 +97,16 @@ function WelcomePage() {
       });
 
       if (response.ok) {
-        setInviteSuccess(`Invitation sent to ${inviteEmail}`);
+        toast.success(`Invitation sent to ${inviteEmail}`);
         setInviteEmail("");
-        setTimeout(() => {
-          setShowInviteDialog(false);
-          setInviteSuccess("");
-        }, 2000);
+        setShowInviteDialog(false);
       } else {
         const errorData = await response.json();
-        setError(errorData.error || "Failed to send invite.");
+        toast.error(errorData.error || "Failed to send invite.");
       }
     } catch (err) {
       console.error("Error sending invite:", err);
-      setError("Network error. Please try again.");
+      toast.error("Network error. Please try again.");
     } finally {
       setIsInviting(false);
     }
@@ -143,12 +136,6 @@ function WelcomePage() {
 
       {/* Main Content */}
       <div className="max-w-6xl mx-auto px-6 py-12">
-        {error && (
-          <div className="mb-6 p-4 rounded-lg border border-expense/20 bg-expense-light text-expense">
-            {error}
-          </div>
-        )}
-
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <FontAwesomeIcon icon={faSpinner} className="text-4xl text-primary mb-4 animate-spin" />
@@ -229,7 +216,6 @@ function WelcomePage() {
                   onClick={() => {
                     setShowCreateDialog(false);
                     setRoomName("");
-                    setError("");
                   }}
                   className="flex-1 px-4 py-2 btn-secondary-expense font-medium"
                   disabled={isCreating}
@@ -256,12 +242,6 @@ function WelcomePage() {
           <div className="bg-card rounded-xl shadow-xl max-w-md w-full p-6 border border-border">
             <h2 className="text-2xl font-semibold text-foreground mb-2">Invite Member</h2>
             <p className="text-muted-foreground mb-4">Send an invitation to join this room</p>
-            
-            {inviteSuccess && (
-              <div className="mb-4 p-3 bg-income-light border border-income/20 rounded-lg text-income text-sm">
-                ✓ {inviteSuccess}
-              </div>
-            )}
 
             <form onSubmit={handleInvite}>
               <input
@@ -278,8 +258,6 @@ function WelcomePage() {
                   onClick={() => {
                     setShowInviteDialog(false);
                     setInviteEmail("");
-                    setInviteSuccess("");
-                    setError("");
                   }}
                   className="flex-1 px-4 py-2 btn-secondary-expense font-medium"
                   disabled={isInviting}

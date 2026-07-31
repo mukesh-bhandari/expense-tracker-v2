@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faTrash, faCheck, faUser, faClock, faEdit } from "@fortawesome/free-solid-svg-icons";
 import ConfirmDeleteDialog from "../../../components/ConfirmDeleteDialog";
-import { useToast } from "../../../components/Toast.jsx";
+import { toast } from "sonner";
 
 function ExpenseList({
   expenses = [],
@@ -12,7 +12,6 @@ function ExpenseList({
   onOpenEditModal,
 }) {
   const { roomId } = useParams();
-  const toast = useToast();
   const [isSaving, setIsSaving] = useState(false);
   const [deleteDialog, setDeleteDialog] = useState({ isOpen: false, expense: null, isLoading: false });
 
@@ -84,7 +83,7 @@ function ExpenseList({
   const handleSkip = (expense, personUsername) => {
     const updatedSplits = recalculateAmounts(expense, personUsername);
     if (updatedSplits === null) {
-      toast("Cannot skip — remainder would exceed 0.1 NPR", "error");
+      toast.error("Cannot skip — remainder would exceed 0.1 NPR");
       return;
     }
 
@@ -122,12 +121,12 @@ function ExpenseList({
         onExpensesUpdate(updatedExpenses);
         closeDeleteDialog();
       } else {
-        toast("Failed to delete expense", "error");
+        toast.error("Failed to delete expense");
         setDeleteDialog((prev) => ({ ...prev, isLoading: false }));
       }
     } catch (error) {
       console.error("Error deleting expense:", error);
-      toast("Failed to delete expense", "error");
+      toast.error("Failed to delete expense");
       setDeleteDialog((prev) => ({ ...prev, isLoading: false }));
     }
   };
@@ -161,13 +160,11 @@ function ExpenseList({
       });
 
       if (response.ok) {
-        // Saved successfully
-      } else {
-        toast("Failed to save changes", "error");
-      }
+        toast.success("Changes saved successfully");
+      } 
     } catch (error) {
       console.error("Error saving states:", error);
-      toast("Failed to save changes", "error");
+      toast.error("Failed to save changes");
     } finally {
       setIsSaving(false);
     }

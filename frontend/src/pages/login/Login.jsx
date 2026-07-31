@@ -1,6 +1,7 @@
 import { useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../contexts/AuthContext.jsx";
+import { toast } from "sonner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
   faUser,
@@ -16,14 +17,12 @@ function Login() {
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
   const navigate = useNavigate();
   const { setIsAuthenticated } = useContext(AuthContext);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    setError("");
 
     try {
       const response = await fetch("/api/auth/login", {
@@ -37,13 +36,14 @@ function Login() {
       if (response.ok) {
         // Update auth context immediately after successful login
         setIsAuthenticated(true);
+        toast.success("Welcome back!");
         navigate("/rooms");
       } else {
-        setError(data.message || "Login failed. Please try again.");
+        toast.error(data.message || "Login failed. Please try again.");
       }
     } catch (error) {
       console.error("Error logging in:", error);
-      setError("Network error. Please check your connection and try again.");
+      toast.error("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
     }
@@ -71,13 +71,6 @@ function Login() {
         {/* Login Form */}
         <div className="expense-form p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Error Message */}
-          {error && (
-            <div className="p-4 rounded-lg bg-expense-light border border-expense text-expense text-sm">
-              {error}
-            </div>
-          )}
-
           {/* Username Field */}
           <div>
             <label

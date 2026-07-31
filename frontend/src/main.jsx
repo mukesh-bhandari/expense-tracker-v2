@@ -8,7 +8,7 @@ import Home from "./pages/home/Home.jsx";
 import Expenses from "./pages/expenses/Expenses.jsx";
 import InviteAccept from "./pages/invite/InviteAccept.jsx";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
-import { ToastProvider } from "./components/Toast.jsx";
+import { Toaster } from "sonner";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Login from "./pages/login/Login.jsx";
 
@@ -50,9 +50,8 @@ const router = createBrowserRouter([
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <AuthProvider>
-      <ToastProvider>
-        <RouterProvider router={router} />
-      </ToastProvider>
+      <Toaster position="top-right" richColors />
+      <RouterProvider router={router} />
     </AuthProvider>
   </StrictMode>
 );

@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { NepaliDatePicker } from "nepali-datepicker-reactjs";
 import { useParams } from "react-router-dom";
-import { useToast } from "../../../components/Toast.jsx";
+import { toast } from "sonner";
 
 function ExpenseForm({ members, onAddExpense }) {
   const { roomId } = useParams();
-  const toast = useToast();
 
   const [item, setItem] = useState("");
   const [price, setPrice] = useState("");
@@ -51,7 +50,7 @@ function ExpenseForm({ members, onAddExpense }) {
       setDate("");
     } catch (error) {
       console.error("Error adding expense:", error);
-      toast("Failed to add expense", "error");
+      toast.error("Failed to add expense");
     } finally {
       setIsAdding(false);
     }

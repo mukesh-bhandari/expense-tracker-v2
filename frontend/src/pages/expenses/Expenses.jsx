@@ -7,12 +7,11 @@ import ExpenseEditModal from "./components/EditModal.jsx";
 import ExpenseForm from "./components/ExpenseForm.jsx";
 import { useNavigate, useParams } from "react-router-dom";
 import { calculateTransactionsFromExpenses } from "./utils/expenseUtils.js";
-import { useToast } from "../../components/Toast.jsx";
+import { toast } from "sonner";
 
 function Expenses() {
   const navigate = useNavigate();
   const { roomId } = useParams();
-  const toast = useToast();
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [netTransactions, setNetTransactions] = useState({});
@@ -110,13 +109,13 @@ function Expenses() {
         );
         setExpenses(updatedExpenses);
         handleCloseEditModal();
-        toast("Expense updated", "success");
+        toast.success("Expense updated");
       } else {
-        toast("Failed to save changes", "error");
+        toast.error("Failed to save changes");
       }
     } catch (error) {
       console.error("Error saving expense:", error);
-      toast("Failed to save changes", "error");
+      toast.error("Failed to save changes");
     }
   };
 
