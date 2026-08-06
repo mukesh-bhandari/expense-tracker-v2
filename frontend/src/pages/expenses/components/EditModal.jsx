@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 
-function ExpenseEditModal({ expense, members, onClose, onSave }) {
+function ExpenseEditModal({ expense, members, onClose, onSave, initialSkipUserId = null }) {
   const [rows, setRows] = useState([]);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -31,8 +31,20 @@ function ExpenseEditModal({ expense, members, onClose, onSave }) {
       };
     });
 
+    if (initialSkipUserId) {
+      const idx = initialized.findIndex((r) => r.userId === initialSkipUserId);
+      if (idx !== -1) {
+        const wasSkipped = initialized[idx].skipped;
+        if (wasSkipped) {
+          initialized[idx] = { ...initialized[idx], skipped: false, amount: "0" };
+        } else {
+          initialized[idx] = { ...initialized[idx], skipped: true, amount: "0" };
+        }
+      }
+    }
+
     setRows(initialized);
-  }, [expense, members]);
+  }, [expense, members, initialSkipUserId]);
 
   const totalAllocated = rows.reduce(
     (sum, row) => sum + (parseFloat(row.amount) || 0),

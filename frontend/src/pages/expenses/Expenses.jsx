@@ -18,6 +18,7 @@ function Expenses() {
   const [isBalanceSheetOpen, setIsBalanceSheetOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
+  const [initialSkipUserId, setInitialSkipUserId] = useState(null);
 
   useEffect(() => {
     if (roomId) {
@@ -60,8 +61,9 @@ function Expenses() {
     setIsBalanceSheetOpen(true);
   };
 
-  const handleOpenEditModal = (expense) => {
+  const handleOpenEditModal = (expense, skipUserId = null) => {
     setEditingExpense(expense);
+    setInitialSkipUserId(skipUserId);
     setIsEditModalOpen(true);
   };
 
@@ -73,6 +75,7 @@ function Expenses() {
   const handleCloseEditModal = () => {
     setIsEditModalOpen(false);
     setEditingExpense(null);
+    setInitialSkipUserId(null);
   };
 
   const handleSaveExpenseAmounts = async (expenseId, updatedSplits) => {
@@ -225,6 +228,7 @@ function Expenses() {
               members={members}
               onClose={handleCloseEditModal}
               onSave={handleSaveExpenseAmounts}
+              initialSkipUserId={initialSkipUserId}
             />
           )}
         </div>

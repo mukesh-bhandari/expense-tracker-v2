@@ -30,6 +30,16 @@ function ExpenseList({
     return parseFloat(split.amount_owed) === 0;
   };
 
+  // Helper: Check if expense has custom (non-equal) splits
+  const hasCustomSplits = (expense) => {
+    const nonSkipped = expense.splits.filter((s) => !isSkipped(s));
+    if (nonSkipped.length <= 1) return false;
+    const first = parseFloat(nonSkipped[0].amount_owed);
+    return nonSkipped.some(
+      (s) => Math.abs(parseFloat(s.amount_owed) - first) > 0.01
+    );
+  };
+
   // Helper: Recalculate amounts after skipping/un-skipping
   const recalculateAmounts = (expense, personUsername) => {
     // Calculate non-skipped count AFTER the toggle is applied
@@ -93,7 +103,12 @@ function ExpenseList({
   };
 
   // Toggle skip: sets amount_owed to 0 and redistributes to others
-  const handleSkip = (expense, personUsername) => {
+  const handleSkip = (expense, personUsername, personUserId) => {
+    if (hasCustomSplits(expense)) {
+      onOpenEditModal(expense, personUserId);
+      return;
+    }
+
     const updatedSplits = recalculateAmounts(expense, personUsername);
     if (updatedSplits === null) {
       toast.error("Cannot skip — remainder would exceed 0.1 NPR");
@@ -305,7 +320,7 @@ function ExpenseList({
                                     : "bg-expense-light text-expense border border-expense/20"
                               }`}
                               onClick={() =>
-                                handleSkip(expense, split.user_username)
+                                handleSkip(expense, split.user_username, split.user_id)
                               }
                             >
                               <span>{split.user_username}</span>
