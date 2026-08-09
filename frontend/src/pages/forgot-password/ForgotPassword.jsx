@@ -1,54 +1,32 @@
-import { useState, useEffect, useRef, useContext } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AuthContext } from "../../contexts/AuthContext.jsx";
 import { toast } from "sonner";
-import { 
-  faUser, 
-  faLock, 
-  faUserPlus, 
-  faEye, 
-  faEyeSlash, 
-  faEnvelope, 
+import {
+  faLock,
+  faEye,
+  faEyeSlash,
+  faEnvelope,
   faShieldAlt,
   faArrowLeft,
-  faClock
+  faClock,
+  faKey,
 } from "@fortawesome/free-solid-svg-icons";
 
-function Signup() {
-  // Step management
+function ForgotPassword() {
   const [currentStep, setCurrentStep] = useState(1);
-  
-  // Form data
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
-  // UI states
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [canResendOtp, setCanResendOtp] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
-  
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { setIsAuthenticated } = useContext(AuthContext);
-  const otpRefs = useRef([]);
-  const inviteEmail = searchParams.get("email") || "";
-  
-  // Decode the redirect URL if it exists
-  const encodedRedirect = searchParams.get("redirect");
-  const redirectUrl = encodedRedirect ? decodeURIComponent(encodedRedirect) : null;
 
-  // Prefill invite email when user is redirected from invite flow.
-  useEffect(() => {
-    if (inviteEmail) {
-      setEmail(inviteEmail);
-    }
-  }, [inviteEmail]);
+  const navigate = useNavigate();
+  const otpRefs = useRef([]);
 
   // Timer for resend OTP
   useEffect(() => {
@@ -62,12 +40,11 @@ function Signup() {
     }
   }, [currentStep, resendTimer]);
 
-  // Step 1: Send OTP to email
+  // Step 1: Send reset code to email
   const handleEmailSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Basic Gmail validation
     if (!email.includes("@gmail.com")) {
       toast.error("Please enter a valid Gmail address.");
       setIsLoading(false);
@@ -78,20 +55,20 @@ function Signup() {
       const response = await fetch("/api/auth/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, purpose: "password_reset" }),
       });
       const data = await response.json();
-      
+
       if (response.ok) {
         setCurrentStep(2);
         setResendTimer(60);
         setCanResendOtp(false);
-        toast.success("Verification code sent to your email");
+        toast.success("Reset code sent to your email");
       } else {
-        toast.error(data.message || "Failed to send OTP. Please try again.");
+        toast.error(data.message || "Failed to send reset code. Please try again.");
       }
     } catch (error) {
-      console.error("Error sending OTP:", error);
+      console.error("Error sending reset code:", error);
       toast.error("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
@@ -105,7 +82,6 @@ function Signup() {
       newOtp[index] = value;
       setOtp(newOtp);
 
-      // Auto-focus next input
       if (value && index < 5) {
         otpRefs.current[index + 1]?.focus();
       }
@@ -142,7 +118,7 @@ function Signup() {
 
     const otpCode = otp.join("");
     if (otpCode.length !== 6) {
-      toast.error("Please enter the complete 6-digit OTP.");
+      toast.error("Please enter the complete 6-digit code.");
       setIsLoading(false);
       return;
     }
@@ -151,18 +127,18 @@ function Signup() {
       const response = await fetch("/api/auth/verify-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: otpCode }),
+        body: JSON.stringify({ email, code: otpCode, purpose: "password_reset" }),
       });
       const data = await response.json();
-      
+
       if (response.ok) {
         setCurrentStep(3);
-        toast.success("Email verified successfully");
+        toast.success("Code verified successfully");
       } else {
-        toast.error(data.message || "Invalid OTP. Please try again.");
+        toast.error(data.error || "Invalid code. Please try again.");
       }
     } catch (error) {
-      console.error("Error verifying OTP:", error);
+      console.error("Error verifying code:", error);
       toast.error("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
@@ -177,18 +153,17 @@ function Signup() {
       const response = await fetch("/api/auth/send-code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, purpose: "password_reset" }),
       });
-      
+
       if (response.ok) {
         setOtp(["", "", "", "", "", ""]);
         setResendTimer(60);
         setCanResendOtp(false);
-        // Focus first OTP input
         otpRefs.current[0]?.focus();
-        toast.success("New verification code sent");
+        toast.success("New reset code sent");
       } else {
-        toast.error("Failed to resend OTP. Please try again.");
+        toast.error("Failed to resend code. Please try again.");
       }
     } catch {
       toast.error("Network error. Please try again.");
@@ -197,38 +172,39 @@ function Signup() {
     }
   };
 
-  // Step 3: Complete signup
-  const handleSignupComplete = async (e) => {
+  // Step 3: Reset password
+  const handlePasswordReset = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Password confirmation check
-    if (password !== confirmPassword) {
+    if (newPassword !== confirmPassword) {
       toast.error("Passwords do not match.");
       setIsLoading(false);
       return;
     }
 
+    if (newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const response = await fetch("/api/auth/signup", {
+      const response = await fetch("/api/auth/reset-password", {
         method: "POST",
-        credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, password }),
+        body: JSON.stringify({ email, code: otp.join(""), newPassword }),
       });
       const data = await response.json();
-      
+
       if (response.ok) {
-        // Signup successful = already authenticated with correct credentials
-        setIsAuthenticated(true);
-        toast.success("Account created successfully!");
-        // Redirect to the stored URL or dashboard if no redirect was provided
-        navigate(redirectUrl || "/rooms");
+        toast.success("Password reset successful! Please log in.");
+        navigate("/login");
       } else {
-        toast.error(data.message || "Signup failed. Please try again.");
+        toast.error(data.error || "Failed to reset password. Please try again.");
       }
     } catch (error) {
-      console.error("Error completing signup:", error);
+      console.error("Error resetting password:", error);
       toast.error("Network error. Please check your connection and try again.");
     } finally {
       setIsLoading(false);
@@ -280,12 +256,12 @@ function Signup() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Sending OTP...
+                  Sending Code...
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
                   <FontAwesomeIcon icon={faEnvelope} />
-                  Send Verification Code
+                  Send Reset Code
                 </span>
               )}
             </button>
@@ -331,7 +307,7 @@ function Signup() {
                   disabled={isLoading}
                   className="text-sm text-primary hover:text-primary/80 font-medium transition-colors duration-200"
                 >
-                  Resend verification code
+                  Resend reset code
                 </button>
               )}
             </div>
@@ -361,42 +337,21 @@ function Signup() {
 
       case 3:
         return (
-          <form onSubmit={handleSignupComplete} className="space-y-6">
+          <form onSubmit={handlePasswordReset} className="space-y-6">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium text-muted-foreground mb-2">
-                Username
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faUser} className="text-muted-foreground text-sm" />
-                </div>
-                <input
-                  id="username"
-                  type="text"
-                  placeholder="Choose a username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  required
-                  className="input-financial w-full pl-10 pr-4 py-3 text-sm font-medium"
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-muted-foreground mb-2">
-                Password
+              <label htmlFor="newPassword" className="block text-sm font-medium text-muted-foreground mb-2">
+                New Password
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                   <FontAwesomeIcon icon={faLock} className="text-muted-foreground text-sm" />
                 </div>
                 <input
-                  id="password"
+                  id="newPassword"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Create a strong password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
                   required
                   className="input-financial w-full pl-10 pr-10 py-3 text-sm font-medium"
                   disabled={isLoading}
@@ -407,9 +362,9 @@ function Signup() {
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
                 >
-                  <FontAwesomeIcon 
-                    icon={showPassword ? faEyeSlash : faEye} 
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" 
+                  <FontAwesomeIcon
+                    icon={showPassword ? faEyeSlash : faEye}
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200"
                   />
                 </button>
               </div>
@@ -426,7 +381,7 @@ function Signup() {
                 <input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm your password"
+                  placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
@@ -439,9 +394,9 @@ function Signup() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   disabled={isLoading}
                 >
-                  <FontAwesomeIcon 
-                    icon={showConfirmPassword ? faEyeSlash : faEye} 
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" 
+                  <FontAwesomeIcon
+                    icon={showConfirmPassword ? faEyeSlash : faEye}
+                    className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200"
                   />
                 </button>
               </div>
@@ -449,7 +404,7 @@ function Signup() {
 
             <button
               type="submit"
-              disabled={isLoading || !username || !password || !confirmPassword}
+              disabled={isLoading || !newPassword || !confirmPassword}
               className="btn-primary-expense w-full cursor-pointer py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
@@ -458,12 +413,12 @@ function Signup() {
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Creating Account...
+                  Resetting Password...
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  <FontAwesomeIcon icon={faUserPlus} />
-                  Create Account
+                  <FontAwesomeIcon icon={faKey} />
+                  Reset Password
                 </span>
               )}
             </button>
@@ -480,18 +435,18 @@ function Signup() {
     switch (currentStep) {
       case 1:
         return {
-          title: "Create Account",
-          description: "Enter your Gmail address to get started"
+          title: "Forgot Password",
+          description: "Enter your email to receive a reset code"
         };
       case 2:
         return {
-          title: "Verify Email",
-          description: "We've sent a verification code to your email"
+          title: "Verify Code",
+          description: "Enter the code sent to your email"
         };
       case 3:
         return {
-          title: "Complete Setup",
-          description: "Choose your username and password"
+          title: "New Password",
+          description: "Choose a new password for your account"
         };
       default:
         return { title: "", description: "" };
@@ -506,13 +461,13 @@ function Signup() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
-            <FontAwesomeIcon icon={faUserPlus} className="text-primary-foreground text-2xl" />
+            <FontAwesomeIcon icon={faKey} className="text-primary-foreground text-2xl" />
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">{title}</h1>
           <p className="text-muted-foreground">{description}</p>
         </div>
 
-        {/* Signup Form */}
+        {/* Forgot Password Form */}
         <div className="expense-form p-8">
         {/* Back Button */}
         {currentStep > 1 && (
@@ -531,13 +486,13 @@ function Signup() {
         {/* Footer */}
         <div className="mt-6 text-center">
           <p className="text-sm text-muted-foreground">
-            Already have an account?{" "}
+            Remember your password?{" "}
             <button
               onClick={() => navigate("/login")}
               type="button"
               className="text-primary hover:text-primary/80 font-medium transition-colors duration-200"
             >
-              Sign in here
+              Sign in
             </button>
           </p>
         </div>
@@ -547,4 +502,4 @@ function Signup() {
   );
 }
 
-export default Signup;
+export default ForgotPassword;

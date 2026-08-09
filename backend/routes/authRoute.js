@@ -2,46 +2,67 @@ const express = require("express");
 const pool = require("../config/db");
 const jwt = require("jsonwebtoken");
 const router = express.Router();
-const { sendVerificationEmail } = require("../services/emailService");
+const { sendVerificationEmail, sendPasswordResetEmail } = require("../services/emailService");
 const bcrypt = require("bcrypt")
 const crypto = require("crypto")
 
 // Send verification code
 router.post("/send-code", async (req, res) => {
-  const { email } = req.body;
+  const { email, purpose = "signup" } = req.body;
 
   if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email)) {
     return res.status(400).json({ error: "Invalid Gmail address" });
   }
-  try {
-    const result = await pool.query("SELECT * FROM users WHERE gmail = $1", [
-      email,
-    ]);
-    if (result.rows.length > 0) {
-      return res.status(500).json({ message: "email already registered" });
+
+  if (purpose === "signup") {
+    try {
+      const result = await pool.query("SELECT * FROM users WHERE gmail = $1", [
+        email,
+      ]);
+      if (result.rows.length > 0) {
+        return res.status(500).json({ message: "email already registered" });
+      }
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ message: "Error checking email from database", error: error.message });
     }
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Error checking email from database", error: error.message });
+  }
+
+  if (purpose === "password_reset") {
+    try {
+      const result = await pool.query("SELECT * FROM users WHERE gmail = $1", [
+        email,
+      ]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "No account found with this email" });
+      }
+    } catch (error) {
+      return res
+        .status(500)
+        .json({ message: "Error checking email from database", error: error.message });
+    }
   }
 
   const code = crypto.randomInt(100000, 999999);
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
 
   try {
-    await pool.query("DELETE FROM verification WHERE email = $1", [email]);
+    await pool.query("DELETE FROM verification WHERE email = $1 AND type = $2", [email, purpose]);
     await pool.query(
-      "INSERT INTO verification (code , expired_at, email) VALUES ($1, $2, $3)",
-      [code, expiresAt, email]
+      "INSERT INTO verification (code, expired_at, email, type) VALUES ($1, $2, $3, $4)",
+      [code, expiresAt, email, purpose]
     );
   } catch (error) {
     return res.status(500).json({ message: "Error saving code to database", error: error.message });
   }
 
   try {
-    // verifaction mail
-    await sendVerificationEmail(email, code);
+    if (purpose === "password_reset") {
+      await sendPasswordResetEmail(email, code);
+    } else {
+      await sendVerificationEmail(email, code);
+    }
     return res.json({ message: "Verification code sent" });
   } catch (err) {
     return res.status(500).json({ error: "Failed to send email", details: err.message });
@@ -50,18 +71,18 @@ router.post("/send-code", async (req, res) => {
 
 // Verify code
 router.post("/verify-code", async (req, res) => {
-  const { email, code } = req.body;
+  const { email, code, purpose = "signup" } = req.body;
   try {
     const record = await pool.query(
-      "SELECT * FROM verification WHERE email = $1",
-      [email]
+      "SELECT * FROM verification WHERE email = $1 AND type = $2",
+      [email, purpose]
     );
 
     if (record.rows.length === 0)
       return res.status(400).json({ error: "No code sent." });
 
     if (Date.now() > record.rows[0].expired_at) {
-      await pool.query("DELETE FROM verification WHERE email = $1", [email]);
+      await pool.query("DELETE FROM verification WHERE email = $1 AND type = $2", [email, purpose]);
       return res.status(400).json({ error: "Code expired." });
     }
 
@@ -69,10 +90,63 @@ router.post("/verify-code", async (req, res) => {
       return res.status(400).json({ error: "Invalid code." });
     }
 
-    await pool.query("DELETE FROM verification WHERE email = $1", [email]);
+    if (purpose === "signup") {
+      await pool.query("DELETE FROM verification WHERE email = $1 AND type = $2", [email, purpose]);
+    }
     res.json({ message: "Email verified " });
   } catch (error) {
     res.status(500).json({ error: "Server error while verifying code", details: error.message });
+  }
+});
+
+// Reset password
+router.post("/reset-password", async (req, res) => {
+  const { email, code, newPassword } = req.body;
+
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ error: "Email, code, and new password are required." });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "Password must be at least 8 characters." });
+  }
+
+  try {
+    // Verify the reset code
+    const record = await pool.query(
+      "SELECT * FROM verification WHERE email = $1 AND type = $2",
+      [email, "password_reset"]
+    );
+
+    if (record.rows.length === 0) {
+      return res.status(400).json({ error: "No reset code found. Please request a new one." });
+    }
+
+    if (Date.now() > record.rows[0].expired_at) {
+      await pool.query("DELETE FROM verification WHERE email = $1 AND type = $2", [email, "password_reset"]);
+      return res.status(400).json({ error: "Code expired. Please request a new one." });
+    }
+
+    if (parseInt(code) !== record.rows[0].code) {
+      return res.status(400).json({ error: "Invalid code." });
+    }
+
+    // Hash new password and update user
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await pool.query("UPDATE users SET password = $1 WHERE gmail = $2", [hashedPassword, email]);
+
+    // Invalidate all sessions for this user
+    const userResult = await pool.query("SELECT id FROM users WHERE gmail = $1", [email]);
+    if (userResult.rows.length > 0) {
+      await pool.query("DELETE FROM refresh_tokens WHERE user_id = $1", [userResult.rows[0].id]);
+    }
+
+    // Delete the verification record
+    await pool.query("DELETE FROM verification WHERE email = $1 AND type = $2", [email, "password_reset"]);
+
+    res.json({ message: "Password reset successful. Please log in with your new password." });
+  } catch (error) {
+    res.status(500).json({ error: "Server error during password reset", details: error.message });
   }
 });
 

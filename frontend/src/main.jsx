@@ -11,6 +11,7 @@ import { AuthProvider } from "./contexts/AuthContext.jsx";
 import { Toaster } from "sonner";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Login from "./pages/login/Login.jsx";
+import ForgotPassword from "./pages/forgot-password/ForgotPassword.jsx";
 
 const router = createBrowserRouter([
   {
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
   {
     path: "/signup",
     element: <Signup />,
+  },
+  {
+    path: "/forgot-password",
+    element: <ForgotPassword />,
   },
   {
     path: "/invite/accept",

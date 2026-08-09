@@ -136,6 +136,15 @@ function Login() {
                 />
               </button>
             </div>
+            {/* <div className="mt-2 text-right">
+              <button
+                type="button"
+                onClick={() => navigate("/forgot-password")}
+                className="text-sm text-primary hover:text-primary/80 font-medium transition-colors duration-200"
+              >
+                Forgot Password?
+              </button>
+            </div> */}
           </div>
 
           {/* Keep Signed In */}
@@ -171,8 +180,9 @@ function Login() {
             </label>
           </div> */}
 
-          <div>
-            <p className="text-sm text-muted-foreground">Dont have an account?</p>
+          <div className="flex justify-between  mt-4">
+           <div>
+             <p className="text-sm text-muted-foreground">Dont have an account?</p>
             <button
               onClick={() => navigate("/signup")}
               type="button"
@@ -180,6 +190,16 @@ function Login() {
             >
               Create an account
             </button>
+           </div>
+           <div className="">
+             <button
+                type="button"
+                onClick={() => navigate("/forgot-password")}
+                className="text-sm text-primary hover:text-primary/80 font-medium transition-colors duration-200"
+              >
+                Forgot Password?
+              </button>
+           </div>
           </div>
 
           {/* Submit Button */}
