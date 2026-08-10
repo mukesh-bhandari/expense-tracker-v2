@@ -9,7 +9,7 @@ function InviteAccept() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useContext(AuthContext);
-  const [status, setStatus] = useState("loading"); // loading, verifying, accepting, accepted, error, wrong-account
+  const [status, setStatus] = useState("loading"); // loading, verifying, accepting, accepted, error, wrong-account, already-accepted
   const [error, setError] = useState("");
   const [roomId, setRoomId] = useState(null);
 
@@ -97,10 +97,15 @@ function InviteAccept() {
 
       if (!verifyResponse.ok) {
         const data = await verifyResponse.json();
-        setStatus("error");
         const msg = data.error || "Invalid invite link";
-        setError(msg);
-        toast.error(msg);
+        // Handle the "Invite already accepted" case as a special status
+        if (msg === "Invite already accepted") {
+          setStatus("already-accepted");
+        } else {
+          setStatus("error");
+          setError(msg);
+          toast.error(msg);
+        }
         return;
       }
 
@@ -210,6 +215,22 @@ function InviteAccept() {
             <FontAwesomeIcon icon={faCheckCircle} className="text-5xl text-income mb-4" />
             <h2 className="text-2xl font-semibold text-foreground mb-2">Invite Accepted!</h2>
             <p className="text-muted-foreground">Redirecting to your room...</p>
+          </div>
+        )}
+
+        {status === "already-accepted" && (
+          <div className="text-center">
+            <FontAwesomeIcon icon={faCheckCircle} className="text-5xl text-income mb-4" />
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Invite Already Accepted</h2>
+            <p className="text-muted-foreground mb-6">
+              You've already accepted this invite and are a member of the room.
+            </p>
+            <button
+              onClick={() => navigate("/rooms")}
+              className="btn-primary-expense px-6 py-2 font-medium"
+            >
+              Go to Rooms
+            </button>
           </div>
         )}
 

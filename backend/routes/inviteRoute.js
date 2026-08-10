@@ -54,19 +54,33 @@ router.get("/verify-token", async (req, res) => {
       return res.status(400).json({ error: "Missing token or email" });
     }
 
-    let query = "SELECT * FROM invitation WHERE email = $1 AND status = 'pending'";
-    let params = [email];
+    // First look for a pending invite
+    let pendingQuery = "SELECT * FROM invitation WHERE email = $1 AND status = 'pending'";
+    let pendingParams = [email];
     if (roomId) {
-      query += " AND room_id = $2";
-      params.push(roomId);
+      pendingQuery += " AND room_id = $2";
+      pendingParams.push(roomId);
     }
-    const result = await pool.query(query, params);
+    const pendingResult = await pool.query(pendingQuery, pendingParams);
 
-    if (result.rows.length === 0) {
+    // If no pending invite found, check for an already accepted invite
+    if (pendingResult.rows.length === 0) {
+      let acceptedQuery = "SELECT * FROM invitation WHERE email = $1 AND status = 'accepted'";
+      let acceptedParams = [email];
+      if (roomId) {
+        acceptedQuery += " AND room_id = $2";
+        acceptedParams.push(roomId);
+      }
+      const acceptedResult = await pool.query(acceptedQuery, acceptedParams);
+
+      if (acceptedResult.rows.length > 0) {
+        return res.status(400).json({ error: "Invite already accepted" });
+      }
+
       return res.status(400).json({ error: "No pending invite for this email" });
     }
 
-    const invite = result.rows[0];
+    const invite = pendingResult.rows[0];
 
     // Check if invite expired (24 hours)
     const createdAt = new Date(invite.created_at).getTime();
