@@ -8,8 +8,8 @@ import { faSpinner, faCheckCircle, faExclamationCircle } from "@fortawesome/free
 function InviteAccept() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { isAuthenticated } = useContext(AuthContext);
-  const [status, setStatus] = useState("loading"); // loading, verifying, accepting, accepted, error
+  const { isAuthenticated, user } = useContext(AuthContext);
+  const [status, setStatus] = useState("loading"); // loading, verifying, accepting, accepted, error, wrong-account
   const [error, setError] = useState("");
   const [roomId, setRoomId] = useState(null);
 
@@ -38,9 +38,46 @@ function InviteAccept() {
       return;
     }
 
-    // User is authenticated, verify token
+    // User is authenticated but has no email (user was deleted from DB) - treat as unauthenticated
+    if (isAuthenticated && user && !user.email) {
+      const redirectUrl = `/invite/accept?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}${inviteRoomId ? `&roomId=${inviteRoomId}` : ''}`;
+      const params = new URLSearchParams({
+        redirect: redirectUrl,
+        skipVerification: "true",
+      });
+      if (email) {
+        params.set("email", email);
+      }
+      navigate(`/signup?${params.toString()}`);
+      return;
+    }
+
+    // User is authenticated - check if their email matches the invite email
+    if (user && user.email && email && user.email !== email) {
+      // Logged in with wrong account - show message
+      setStatus("wrong-account");
+      return;
+    }
+
+    // User is authenticated and email matches (or email not yet available from user object)
+    // Verify token
     verifyAndAcceptInvite();
-  }, [isAuthenticated, token, email, navigate]);
+  }, [isAuthenticated, user, token, email, navigate]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      // Clear auth state - AuthContext doesn't expose logout, so we reload
+      window.location.reload();
+    } catch (err) {
+      console.error("Logout failed:", err);
+      // Force reload anyway to clear cookies
+      window.location.reload();
+    }
+  };
 
   const verifyAndAcceptInvite = async () => {
     if (!token || !email) {
@@ -122,6 +159,33 @@ function InviteAccept() {
             <FontAwesomeIcon icon={faSpinner} className="text-4xl text-primary mb-4 animate-spin" />
             <h2 className="text-2xl font-semibold text-foreground mb-2">Processing Invite</h2>
             <p className="text-muted-foreground">Please wait...</p>
+          </div>
+        )}
+
+        {status === "wrong-account" && (
+          <div className="text-center">
+            <FontAwesomeIcon icon={faExclamationCircle} className="text-5xl text-expense mb-4" />
+            <h2 className="text-2xl font-semibold text-foreground mb-2">Wrong Account</h2>
+            <p className="text-muted-foreground mb-2">
+              This invite was sent to <strong>{email}</strong>, but you're logged in as <strong>{user?.username}</strong>.
+            </p>
+            <p className="text-muted-foreground mb-6">
+              Please log out and sign in with the correct account to accept this invite.
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={handleLogout}
+                className="btn-primary-expense w-full py-3 text-sm font-semibold cursor-pointer"
+              >
+                Log Out & Use Correct Account
+              </button>
+              <button
+                onClick={() => navigate("/rooms")}
+                className="w-full py-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         )}
 

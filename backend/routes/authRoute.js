@@ -281,14 +281,43 @@ router.post("/logout", async (req, res) => {
 
 const authenticateUser = require("../middleware/auth");
 
-router.get("/verify", authenticateUser, (req, res) => {
-  res.json({
-    message: "User authenticated",
-    user: {
-      id: req.user.id,
-      username: req.user.username,
-    },
-  });
+router.get("/verify", authenticateUser, async (req, res) => {
+  try {
+    const result = await pool.query("SELECT gmail FROM users WHERE id = $1", [req.user.id]);
+    
+    // User doesn't exist in DB (was deleted) - clear cookies and return 401
+    if (result.rows.length === 0) {
+      res.clearCookie("accessToken", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+      });
+      res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+      });
+      return res.status(401).json({ error: "User not found" });
+    }
+
+    res.json({
+      message: "User authenticated",
+      user: {
+        id: req.user.id,
+        username: req.user.username,
+        email: result.rows[0].gmail,
+      },
+    });
+  } catch (error) {
+    res.json({
+      message: "User authenticated",
+      user: {
+        id: req.user.id,
+        username: req.user.username,
+        email: null,
+      },
+    });
+  }
 });
 
 module.exports = router;

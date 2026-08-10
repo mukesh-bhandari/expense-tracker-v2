@@ -13,6 +13,18 @@ router.post("/send-invite", authenticateUser, async (req, res) => {
   const hashedToken = await bcrypt.hash(token, 10);
   
   try {
+    // Check if the email belongs to an existing user who is already a member of this room
+    const existingMember = await pool.query(
+      `SELECT rm.user_id FROM room_members rm 
+       JOIN users u ON rm.user_id = u.id 
+       WHERE u.gmail = $1 AND rm.room_id = $2`,
+      [email, roomId]
+    );
+
+    if (existingMember.rows.length > 0) {
+      return res.status(400).json({ error: "This user is already a member of this room" });
+    }
+
     // Remove any existing pending invite for this email+room to avoid duplicates
     await pool.query(
       "DELETE FROM invitation WHERE email = $1 AND room_id = $2 AND status = 'pending'",
@@ -122,14 +134,31 @@ router.post("/accept-invite", authenticateUser, async (req, res) => {
       return res.status(400).json({ error: "Invalid token" });
     }
 
-    // Update invite status
-    await pool.query("UPDATE invitation SET status = 'accepted' WHERE id = $1", [invite.id]);
+    // Verify the authenticated user's email matches the invitation email
+    const userResult = await pool.query("SELECT gmail FROM users WHERE id = $1", [userId]);
+    if (userResult.rows.length === 0 || userResult.rows[0].gmail !== email) {
+      return res.status(403).json({ error: "This invite is for a different email address" });
+    }
+
+    // Check if user is already a member of the room
+    const memberCheck = await pool.query(
+      "SELECT 1 FROM room_members WHERE room_id = $1 AND user_id = $2",
+      [invite.room_id, userId]
+    );
+    if (memberCheck.rows.length > 0) {
+      // User is already a member, just mark invite as accepted and return success
+      await pool.query("UPDATE invitation SET status = 'accepted' WHERE id = $1", [invite.id]);
+      return res.json({ message: "Invite accepted", roomId: invite.room_id });
+    }
 
     // Add user to room
     await pool.query(
       "INSERT INTO room_members (room_id, user_id) VALUES ($1, $2)",
       [invite.room_id, userId]
     );
+
+    // Update invite status
+    await pool.query("UPDATE invitation SET status = 'accepted' WHERE id = $1", [invite.id]);
 
     res.json({ message: "Invite accepted", roomId: invite.room_id });
   } catch (err) {
