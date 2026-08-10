@@ -16,8 +16,11 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 
 function Signup() {
-  // Step management
-  const [currentStep, setCurrentStep] = useState(1);
+  // Step management - skip to step 3 (username/password) if coming from invite flow
+  const [currentStep, setCurrentStep] = useState(() => {
+    const skipVerification = new URLSearchParams(window.location.search).get("skipVerification") === "true";
+    return skipVerification ? 3 : 1;
+  });
   
   // Form data
   const [email, setEmail] = useState("");
@@ -38,6 +41,7 @@ function Signup() {
   const { setIsAuthenticated } = useContext(AuthContext);
   const otpRefs = useRef([]);
   const inviteEmail = searchParams.get("email") || "";
+  const skipVerification = searchParams.get("skipVerification") === "true";
   
   // Decode the redirect URL if it exists
   const encodedRedirect = searchParams.get("redirect");
@@ -533,7 +537,15 @@ function Signup() {
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => {
+                // Preserve redirect parameters when navigating to login
+                const loginParams = new URLSearchParams();
+                if (redirectUrl) {
+                  loginParams.set("redirect", encodeURIComponent(redirectUrl));
+                }
+                const loginUrl = loginParams.toString() ? `/login?${loginParams.toString()}` : "/login";
+                navigate(loginUrl);
+              }}
               type="button"
               className="text-primary hover:text-primary/80 font-medium transition-colors duration-200"
             >

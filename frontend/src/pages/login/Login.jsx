@@ -1,5 +1,5 @@
 import { useState, useContext } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { AuthContext } from "../../contexts/AuthContext.jsx";
 import { toast } from "sonner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -18,7 +18,12 @@ function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { setIsAuthenticated } = useContext(AuthContext);
+  
+  // Get redirect URL from search params
+  const encodedRedirect = searchParams.get("redirect");
+  const redirectUrl = encodedRedirect ? decodeURIComponent(encodedRedirect) : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -37,7 +42,8 @@ function Login() {
         // Update auth context immediately after successful login
         setIsAuthenticated(true);
         toast.success("Welcome back!");
-        navigate("/rooms");
+        // Redirect to the stored URL or rooms if no redirect was provided
+        navigate(redirectUrl || "/rooms");
       } else {
         toast.error(data.message || "Login failed. Please try again.");
       }
@@ -184,7 +190,15 @@ function Login() {
            <div>
              <p className="text-sm text-muted-foreground">Dont have an account?</p>
             <button
-              onClick={() => navigate("/signup")}
+              onClick={() => {
+                // Preserve redirect parameters when navigating to signup
+                const signupParams = new URLSearchParams();
+                if (redirectUrl) {
+                  signupParams.set("redirect", encodeURIComponent(redirectUrl));
+                }
+                const signupUrl = signupParams.toString() ? `/signup?${signupParams.toString()}` : "/signup";
+                navigate(signupUrl);
+              }}
               type="button"
               className="text-sm text-primary hover:text-primary/80 font-medium transition-colors duration-200 mt-2"
             >

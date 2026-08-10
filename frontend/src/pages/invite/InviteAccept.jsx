@@ -25,9 +25,11 @@ function InviteAccept() {
 
     if (isAuthenticated === false) {
       // Not authenticated - redirect to signup with invite link
+      // skipVerification=true because email is already verified by clicking the invite link
       const redirectUrl = `/invite/accept?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}${inviteRoomId ? `&roomId=${inviteRoomId}` : ''}`;
       const params = new URLSearchParams({
         redirect: redirectUrl,
+        skipVerification: "true",
       });
       if (email) {
         params.set("email", email);
