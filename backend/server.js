@@ -9,6 +9,7 @@ const authRoute = require("./routes/authRoute");
 const inviteRoute = require("./routes/inviteRoute");
 const roomRoute = require("./routes/roomRoute");
 const expenseRoute = require("./routes/expenseRoute")
+const { globalLimiter } = require("./config/rateLimit");
 
 
 const allowedOrigins = [
@@ -32,6 +33,8 @@ app.use(cookieParser());
 pool.on("error", (err) => {
   console.error("Unexpected error on idle client", err);
 });
+
+app.use("/api", globalLimiter);
 
 app.use("/api/auth", authRoute);
 app.use("/api/invite", inviteRoute);

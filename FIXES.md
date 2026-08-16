@@ -132,12 +132,26 @@
 ### Dependency added
 - `express-rate-limit@^8.6.2` (backend).
 
-## Phase 5 — Server-Wide Security ⏳ PLANNED
+## Phase 5 — Server-Wide Security ✅ DONE
 
-| Bug | Fix |
-|-----|-----|
-| B06 | `rejectUnauthorized: true` on the Neon connection (standard certs, no CA file needed) |
-| B15 | Add `sendCodeLimiter` (5/min) + `loginLimiter` (5/min) + global baseline to `config/rateLimit.js` and mount in `server.js` (dependency already installed in Phase 4) |
+### B06 — `rejectUnauthorized: false` enables MITM ✅ FIXED
+- `backend/config/db.js`: `ssl: { rejectUnauthorized: true }` (explicit), with a comment documenting the full investigation.
+- **Discovery (important, documented in db.js):** the old `rejectUnauthorized: false` was actually dead code. `DATABASE_URL` contains `?sslmode=require`, which pg-connection-string maps to `ssl: {}`; pg merges that OVER the explicit `ssl` option (`Object.assign({}, config, parse(connectionString))`), and Node's TLS defaults `rejectUnauthorized` to `true` when absent. A live check confirmed `stream.authorized === true` (Let's Encrypt cert for `*.ap-southeast-1.aws.neon.tech`). The fix makes the secure intent explicit so verification can never be accidentally disabled (e.g., by editing the URL).
+- Optional hardening (env change only): switch `DATABASE_URL` to `sslmode=verify-full` for hostname verification.
+
+### B15 — No rate limiting on any endpoint ✅ FIXED
+- `backend/config/rateLimit.js` now exports:
+  - `sendCodeIpLimiter` — 10/min per IP (anti email-bombing with rotating addresses)
+  - `sendCodeEmailLimiter` — 5/min per email (keyed on `req.body.email`)
+  - `loginLimiter` — 5/min per IP
+  - `globalLimiter` — 100/min per IP baseline
+  - `inviteVerifyLimiter` — 20/min per IP (from Phase 4)
+- `backend/routes/authRoute.js`: `/send-code` chains both send-code limiters; `/login` uses `loginLimiter`.
+- `backend/server.js`: `app.use("/api", globalLimiter)` before all route mounts.
+- **Caveat:** limiters use the default in-memory store, which resets on each Vercel serverless cold start. Acceptable for now; a shared store (e.g., Redis) would be needed for strict guarantees.
+
+### B16 — No CSRF protection ✅ FIXED (done in Phase 2)
+- Covered by the `sameSite: "strict"` cookie change — no Phase 5 work needed.
 
 ## Phase 6 — Frontend Data Integrity ⏳ PLANNED
 

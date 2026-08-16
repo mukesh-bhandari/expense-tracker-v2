@@ -8,6 +8,7 @@ const crypto = require("crypto")
 const { z } = require("zod");
 const { accessTokenOptions, refreshTokenOptions, clearCookieOptions } = require("../config/cookies");
 const { serverError } = require("../utils/errors");
+const { sendCodeIpLimiter, sendCodeEmailLimiter, loginLimiter } = require("../config/rateLimit");
 
 const signupSchema = z.object({
   email: z.string().regex(/^[a-zA-Z0-9._%+-]+@gmail\.com$/, "Invalid Gmail address"),
@@ -21,7 +22,7 @@ const loginSchema = z.object({
 });
 
 // Send verification code
-router.post("/send-code", async (req, res) => {
+router.post("/send-code", sendCodeIpLimiter, sendCodeEmailLimiter, async (req, res) => {
   const { email, purpose = "signup" } = req.body;
 
   if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(email)) {
@@ -234,7 +235,7 @@ router.post("/signup", async (req, res) => {
   }
 });
 
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) {
     return res.status(400).json({ error: parsed.error.issues[0].message });
