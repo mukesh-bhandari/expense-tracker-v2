@@ -2,11 +2,20 @@ const pool = require("../config/db");
 const express = require("express");
 const authenticateUser = require("../middleware/auth")
 const authorizeRoomMember = require("../middleware/roomAuth");
+const { z } = require("zod");
 const router = express.Router();
+
+const roomNameSchema = z.object({
+  name: z.string().trim().min(1).max(100),
+});
 
 router.post("/create-room", authenticateUser, async (req, res) => {
   const userId = req.user.id;
-  const { name } = req.body;
+  const parsed = roomNameSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "Room name must be 1-100 characters" });
+  }
+  const { name } = parsed.data;
   try {
     //TODO: if room already esists what to do
     const result = await pool.query(

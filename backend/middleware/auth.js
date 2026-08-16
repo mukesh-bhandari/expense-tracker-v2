@@ -1,5 +1,6 @@
 const pool = require("../config/db");
 const jwt = require("jsonwebtoken");
+const { accessTokenOptions } = require("../config/cookies");
 
 const authenticateUser = async (req, res, next) => {
   const token = req.cookies?.accessToken;
@@ -33,21 +34,24 @@ const authenticateUser = async (req, res, next) => {
         return res.status(401).json({ error: "Refresh token not found in db" });
       }
 
-      // Verify refresh token and issue new access token
+      // Verify refresh token and issue new access token with fresh user data
       try {
-        const user = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+        const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+        const userResult = await pool.query(
+          "SELECT id, username FROM users WHERE id = $1",
+          [decoded.id]
+        );
+        if (userResult.rows.length === 0) {
+          return res.status(401).json({ error: "User not found" });
+        }
+        const user = userResult.rows[0];
         console.log("new access token created ");
         const newAccessToken = jwt.sign(
           { id: user.id, username: user.username },
           process.env.ACCESS_TOKEN_SECRET,
           { expiresIn: "15m" }
         );
-        res.cookie("accessToken", newAccessToken, {
-          httpOnly: true,
-          secure: true,
-          sameSite: "lax",
-          maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        res.cookie("accessToken", newAccessToken, accessTokenOptions);
         req.user = user;
         return next();
       } catch (refreshErr) {

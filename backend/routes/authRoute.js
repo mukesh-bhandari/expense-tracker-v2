@@ -5,6 +5,19 @@ const router = express.Router();
 const { sendVerificationEmail, sendPasswordResetEmail } = require("../services/emailService");
 const bcrypt = require("bcrypt")
 const crypto = require("crypto")
+const { z } = require("zod");
+const { accessTokenOptions, refreshTokenOptions, clearCookieOptions } = require("../config/cookies");
+
+const signupSchema = z.object({
+  email: z.string().regex(/^[a-zA-Z0-9._%+-]+@gmail\.com$/, "Invalid Gmail address"),
+  username: z.string().min(3).max(30).regex(/^[a-zA-Z0-9_]+$/, "Username must be 3-30 characters using letters, numbers, or underscores"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+const loginSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+});
 
 // Send verification code
 router.post("/send-code", async (req, res) => {
@@ -20,7 +33,7 @@ router.post("/send-code", async (req, res) => {
         email,
       ]);
       if (result.rows.length > 0) {
-        return res.status(500).json({ message: "email already registered" });
+        return res.status(409).json({ message: "email already registered" });
       }
     } catch (error) {
       return res
@@ -47,14 +60,23 @@ router.post("/send-code", async (req, res) => {
   const code = crypto.randomInt(100000, 999999);
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
 
+  let client;
   try {
-    await pool.query("DELETE FROM verification WHERE email = $1 AND type = $2", [email, purpose]);
-    await pool.query(
+    client = await pool.connect();
+    await client.query("BEGIN");
+    await client.query("DELETE FROM verification WHERE email = $1 AND type = $2", [email, purpose]);
+    await client.query(
       "INSERT INTO verification (code, expired_at, email, type) VALUES ($1, $2, $3, $4)",
       [code, expiresAt, email, purpose]
     );
+    await client.query("COMMIT");
   } catch (error) {
+    if (client) {
+      try { await client.query("ROLLBACK"); } catch (_) {}
+    }
     return res.status(500).json({ message: "Error saving code to database", error: error.message });
+  } finally {
+    if (client) client.release();
   }
 
   try {
@@ -91,7 +113,10 @@ router.post("/verify-code", async (req, res) => {
     }
 
     if (purpose === "signup") {
-      await pool.query("DELETE FROM verification WHERE email = $1 AND type = $2", [email, purpose]);
+      await pool.query(
+        "UPDATE verification SET type = 'signup_verified', expired_at = $1 WHERE email = $2 AND type = 'signup'",
+        [Date.now() + 30 * 60 * 1000, email]
+      );
     }
     res.json({ message: "Email verified " });
   } catch (error) {
@@ -151,9 +176,27 @@ router.post("/reset-password", async (req, res) => {
 });
 
 router.post("/signup", async (req, res) => {
-  const { email, username, password } = req.body;
+  const parsed = signupSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0].message });
+  }
+  const { email, username, password } = parsed.data;
 
   try {
+    // Require email verification (OTP) OR a valid pending invite before allowing signup
+    const verified = await pool.query(
+      "SELECT 1 FROM verification WHERE email = $1 AND type = 'signup_verified' AND expired_at > $2",
+      [email, Date.now()]
+    );
+    const pendingInvite = await pool.query(
+      "SELECT 1 FROM invitation WHERE email = $1 AND status = 'pending'",
+      [email]
+    );
+
+    if (verified.rows.length === 0 && pendingInvite.rows.length === 0) {
+      return res.status(403).json({ error: "Email not verified. Please complete OTP verification." });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
@@ -161,6 +204,11 @@ router.post("/signup", async (req, res) => {
       [username, hashedPassword, email]
     );
     
+
+    await pool.query(
+      "DELETE FROM verification WHERE email = $1 AND type = 'signup_verified'",
+      [email]
+    );
 
     const user = result.rows[0];
     const accessToken = jwt.sign(
@@ -181,18 +229,8 @@ router.post("/signup", async (req, res) => {
       "INSERT INTO refresh_tokens (user_id, token) VALUES ($1, $2) ON CONFLICT (token) DO NOTHING",
       [user.id, refreshToken]
     );
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    res.cookie("accessToken", accessToken, accessTokenOptions);
+    res.cookie("refreshToken", refreshToken, refreshTokenOptions);
     return res.json({ message: "Signup Successfull" });
   } catch (error) {
     res.status(500).json({ error: "Server error", details: error.message });
@@ -200,7 +238,11 @@ router.post("/signup", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  const parsed = loginSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0].message });
+  }
+  const { username, password } = parsed.data;
 
   try {
     const result = await pool.query("SELECT * FROM users WHERE username = $1", [
@@ -236,18 +278,8 @@ router.post("/login", async (req, res) => {
         [user.id, refreshToken]
       );
 
-      res.cookie("accessToken", accessToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
-      res.cookie("refreshToken", refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie("accessToken", accessToken, accessTokenOptions);
+      res.cookie("refreshToken", refreshToken, refreshTokenOptions);
 
       res.json({ message: "Login Successfull" });
     }
@@ -262,16 +294,8 @@ router.post("/logout", async (req, res) => {
     if (refreshToken) {
       await pool.query("DELETE FROM refresh_tokens WHERE token = $1", [refreshToken]);
     }
-    res.clearCookie("accessToken", {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-    });
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: true,
-      sameSite: "lax",
-    });
+    res.clearCookie("accessToken", clearCookieOptions);
+    res.clearCookie("refreshToken", clearCookieOptions);
     res.json({ message: "Logout successful" });
   } catch (error) {
     console.error("Error during logout:", error);
@@ -287,16 +311,8 @@ router.get("/verify", authenticateUser, async (req, res) => {
     
     // User doesn't exist in DB (was deleted) - clear cookies and return 401
     if (result.rows.length === 0) {
-      res.clearCookie("accessToken", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-      });
-      res.clearCookie("refreshToken", {
-        httpOnly: true,
-        secure: true,
-        sameSite: "lax",
-      });
+      res.clearCookie("accessToken", clearCookieOptions);
+      res.clearCookie("refreshToken", clearCookieOptions);
       return res.status(401).json({ error: "User not found" });
     }
 
