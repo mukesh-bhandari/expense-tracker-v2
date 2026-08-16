@@ -7,6 +7,7 @@ const bcrypt = require("bcrypt")
 const crypto = require("crypto")
 const { z } = require("zod");
 const { accessTokenOptions, refreshTokenOptions, clearCookieOptions } = require("../config/cookies");
+const { serverError } = require("../utils/errors");
 
 const signupSchema = z.object({
   email: z.string().regex(/^[a-zA-Z0-9._%+-]+@gmail\.com$/, "Invalid Gmail address"),
@@ -36,9 +37,7 @@ router.post("/send-code", async (req, res) => {
         return res.status(409).json({ message: "email already registered" });
       }
     } catch (error) {
-      return res
-        .status(500)
-        .json({ message: "Error checking email from database", error: error.message });
+      return serverError(res, error, "Error checking email from database");
     }
   }
 
@@ -51,9 +50,7 @@ router.post("/send-code", async (req, res) => {
         return res.status(404).json({ message: "No account found with this email" });
       }
     } catch (error) {
-      return res
-        .status(500)
-        .json({ message: "Error checking email from database", error: error.message });
+      return serverError(res, error, "Error checking email from database");
     }
   }
 
@@ -74,7 +71,7 @@ router.post("/send-code", async (req, res) => {
     if (client) {
       try { await client.query("ROLLBACK"); } catch (_) {}
     }
-    return res.status(500).json({ message: "Error saving code to database", error: error.message });
+    return serverError(res, error, "Error saving code to database");
   } finally {
     if (client) client.release();
   }
@@ -87,7 +84,7 @@ router.post("/send-code", async (req, res) => {
     }
     return res.json({ message: "Verification code sent" });
   } catch (err) {
-    return res.status(500).json({ error: "Failed to send email", details: err.message });
+    return serverError(res, err, "Failed to send email");
   }
 });
 
@@ -120,7 +117,7 @@ router.post("/verify-code", async (req, res) => {
     }
     res.json({ message: "Email verified " });
   } catch (error) {
-    res.status(500).json({ error: "Server error while verifying code", details: error.message });
+    serverError(res, error, "Server error while verifying code");
   }
 });
 
@@ -171,7 +168,7 @@ router.post("/reset-password", async (req, res) => {
 
     res.json({ message: "Password reset successful. Please log in with your new password." });
   } catch (error) {
-    res.status(500).json({ error: "Server error during password reset", details: error.message });
+    serverError(res, error, "Server error during password reset");
   }
 });
 
@@ -233,7 +230,7 @@ router.post("/signup", async (req, res) => {
     res.cookie("refreshToken", refreshToken, refreshTokenOptions);
     return res.json({ message: "Signup Successfull" });
   } catch (error) {
-    res.status(500).json({ error: "Server error", details: error.message });
+    serverError(res, error, "Server error");
   }
 });
 
@@ -284,7 +281,7 @@ router.post("/login", async (req, res) => {
       res.json({ message: "Login Successfull" });
     }
   } catch (error) {
-    res.status(500).json({ message: "Error login in", details: error.message });
+    serverError(res, error, "Error logging in");
   }
 });
 
@@ -298,8 +295,7 @@ router.post("/logout", async (req, res) => {
     res.clearCookie("refreshToken", clearCookieOptions);
     res.json({ message: "Logout successful" });
   } catch (error) {
-    console.error("Error during logout:", error);
-    res.status(500).json({ message: "Logout failed" });
+    serverError(res, error, "Logout failed");
   }
 });
 

@@ -17,6 +17,8 @@ const allowedOrigins = [
   "http://localhost:5173",  // Local Vite dev server
 ].filter(Boolean);
 
+app.set("trust proxy", 1);
+
 app.use(
   cors({
     origin: allowedOrigins,
@@ -29,7 +31,6 @@ app.use(cookieParser());
 
 pool.on("error", (err) => {
   console.error("Unexpected error on idle client", err);
-  process.exit(-1);
 });
 
 app.use("/api/auth", authRoute);

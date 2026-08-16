@@ -4,15 +4,18 @@ const express = require("express");
 const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const authenticateUser = require("../middleware/auth");
+const { serverError } = require("../utils/errors");
+const { inviteVerifyLimiter } = require("../config/rateLimit");
 
 const router = express.Router();
 
 router.post("/send-invite", authenticateUser, async (req, res) => {
   const { email, roomId } = req.body;
   const token = crypto.randomBytes(32).toString("hex");
-  const hashedToken = await bcrypt.hash(token, 10);
-  
+
   try {
+    const hashedToken = await bcrypt.hash(token, 10);
+
     // Check if the email belongs to an existing user who is already a member of this room
     const existingMember = await pool.query(
       `SELECT rm.user_id FROM room_members rm 
@@ -42,11 +45,11 @@ router.post("/send-invite", authenticateUser, async (req, res) => {
     await sendInviteEmail(email, inviteLink);
     res.json({ message: "invite sent" });
   } catch (error) {
-    res.status(500).json({ error: "Failed to send invite", details: error.message });
+    serverError(res, error, "Failed to send invite");
   }
 });
 
-router.get("/verify-token", async (req, res) => {
+router.get("/verify-token", inviteVerifyLimiter, async (req, res) => {
   const { token, email, roomId } = req.query;
 
   try {
@@ -101,7 +104,7 @@ router.get("/verify-token", async (req, res) => {
 
     res.json({ message: "Token verified", email, roomId: invite.room_id });
   } catch (err) {
-    res.status(500).json({ error: "Server error", details: err.message });
+    serverError(res, err, "Server error");
   }
 });
 
@@ -154,29 +157,37 @@ router.post("/accept-invite", authenticateUser, async (req, res) => {
       return res.status(403).json({ error: "This invite is for a different email address" });
     }
 
-    // Check if user is already a member of the room
-    const memberCheck = await pool.query(
-      "SELECT 1 FROM room_members WHERE room_id = $1 AND user_id = $2",
-      [invite.room_id, userId]
-    );
-    if (memberCheck.rows.length > 0) {
-      // User is already a member, just mark invite as accepted and return success
-      await pool.query("UPDATE invitation SET status = 'accepted' WHERE id = $1", [invite.id]);
-      return res.json({ message: "Invite accepted", roomId: invite.room_id });
+    // Add user to room and mark invite accepted atomically.
+    // ON CONFLICT DO NOTHING makes this idempotent if the user is already a member,
+    // and concurrent duplicate accepts can no longer create duplicate membership.
+    let client;
+    try {
+      client = await pool.connect();
+      await client.query("BEGIN");
+
+      await client.query(
+        "INSERT INTO room_members (room_id, user_id) VALUES ($1, $2) ON CONFLICT (room_id, user_id) DO NOTHING",
+        [invite.room_id, userId]
+      );
+
+      await client.query(
+        "UPDATE invitation SET status = 'accepted' WHERE id = $1",
+        [invite.id]
+      );
+
+      await client.query("COMMIT");
+    } catch (err) {
+      if (client) {
+        try { await client.query("ROLLBACK"); } catch (_) {}
+      }
+      throw err;
+    } finally {
+      if (client) client.release();
     }
-
-    // Add user to room
-    await pool.query(
-      "INSERT INTO room_members (room_id, user_id) VALUES ($1, $2)",
-      [invite.room_id, userId]
-    );
-
-    // Update invite status
-    await pool.query("UPDATE invitation SET status = 'accepted' WHERE id = $1", [invite.id]);
 
     res.json({ message: "Invite accepted", roomId: invite.room_id });
   } catch (err) {
-    res.status(500).json({ error: "Server error", details: err.message });
+    serverError(res, err, "Server error");
   }
 });
 

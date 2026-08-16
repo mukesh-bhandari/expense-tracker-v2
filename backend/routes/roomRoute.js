@@ -3,6 +3,7 @@ const express = require("express");
 const authenticateUser = require("../middleware/auth")
 const authorizeRoomMember = require("../middleware/roomAuth");
 const { z } = require("zod");
+const { serverError } = require("../utils/errors");
 const router = express.Router();
 
 const roomNameSchema = z.object({
@@ -38,7 +39,7 @@ router.post("/create-room", authenticateUser, async (req, res) => {
 
     return res.json({data: formattedRoom });
   } catch (error) {
-    res.status(500).json({ error: "error creating room", details: error.message });
+    serverError(res, error, "Error creating room");
   }
 });
 
@@ -62,7 +63,7 @@ router.get("/my-rooms", authenticateUser, async (req, res) => {
     // get the rooms form roomid
     res.json(result.rows)
   } catch (error) {
-    res.status(500).json({ error: "error getting users rooms", details: error.message });
+    serverError(res, error, "Error getting user's rooms");
   }
 });
 
@@ -85,7 +86,7 @@ router.get("/:roomId/members", authenticateUser, authorizeRoomMember, async (req
 
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: "Error fetching room members", details: error.message });
+    serverError(res, error, "Error fetching room members");
   }
 });
 
