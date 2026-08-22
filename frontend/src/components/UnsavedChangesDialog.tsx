@@ -1,4 +1,9 @@
-function UnsavedChangesDialog({ onLeave, onStay }) {
+interface UnsavedChangesDialogProps {
+  onLeave: () => void
+  onStay: () => void
+}
+
+function UnsavedChangesDialog({ onLeave, onStay }: UnsavedChangesDialogProps) {
   return (
     <>
       <div className="fixed inset-0 modal-backdrop z-40" />
@@ -23,7 +28,7 @@ function UnsavedChangesDialog({ onLeave, onStay }) {
         </div>
       </div>
     </>
-  );
+  )
 }
 
-export default UnsavedChangesDialog;
+export default UnsavedChangesDialog

@@ -1,15 +1,26 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  faTrash,
-  faCheck,
-  faUser,
-  faClock,
-  faEdit,
-} from "@fortawesome/free-solid-svg-icons";
-import ConfirmDeleteDialog from "../../../components/ConfirmDeleteDialog";
-import { toast } from "sonner";
+import { useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { Trash2, Check, User, Clock, Pencil } from 'lucide-react'
+import ConfirmDeleteDialog from '../../../components/ConfirmDeleteDialog'
+import { deleteExpense, saveExpenseStates } from '../../../api/expenses'
+import { toast } from 'sonner'
+import type { Expense, ExpenseState, Split } from '../../../types'
+
+interface DeleteDialogState {
+  isOpen: boolean
+  expense: Expense | null
+  isLoading: boolean
+}
+
+interface ExpenseListProps {
+  expenses?: Expense[]
+  isDirty?: boolean
+  onExpensesUpdate: (expenses: Expense[]) => void
+  onExpensesPersisted: (expenses: Expense[]) => void
+  onSaved: () => void
+  onOpenBalanceSheet: () => void
+  onOpenEditModal: (expense: Expense, skipUserId?: number | null) => void
+}
 
 function ExpenseList({
   expenses = [],
@@ -19,157 +30,153 @@ function ExpenseList({
   onSaved,
   onOpenBalanceSheet,
   onOpenEditModal,
-}) {
-  const { roomId } = useParams();
-  const [isSaving, setIsSaving] = useState(false);
-  const [deleteDialog, setDeleteDialog] = useState({
+}: ExpenseListProps) {
+  const { roomId } = useParams()
+  const [isSaving, setIsSaving] = useState(false)
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({
     isOpen: false,
     expense: null,
     isLoading: false,
-  });
+  })
 
   // Helper: Check if a split is skipped (amount_owed === 0)
-  const isSkipped = (split) => {
-    return parseFloat(split.amount_owed) === 0;
-  };
+  const isSkipped = (split: Split) => {
+    return parseFloat(split.amount_owed) === 0
+  }
 
   // Helper: Check if expense has custom (non-equal) splits
-  const hasCustomSplits = (expense) => {
-    const nonSkipped = expense.splits.filter((s) => !isSkipped(s));
-    if (nonSkipped.length <= 1) return false;
-    const first = parseFloat(nonSkipped[0].amount_owed);
+  const hasCustomSplits = (expense: Expense) => {
+    const nonSkipped = expense.splits.filter((s) => !isSkipped(s))
+    if (nonSkipped.length <= 1) return false
+    const first = parseFloat(nonSkipped[0].amount_owed)
     return nonSkipped.some(
-      (s) => Math.abs(parseFloat(s.amount_owed) - first) > 0.01
-    );
-  };
+      (s) => Math.abs(parseFloat(s.amount_owed) - first) > 0.01,
+    )
+  }
 
   // Helper: Recalculate amounts after skipping/un-skipping
-  const recalculateAmounts = (expense, personUsername) => {
+  const recalculateAmounts = (
+    expense: Expense,
+    personUsername: string,
+  ): Split[] | null => {
     // Calculate non-skipped count AFTER the toggle is applied
-    let nonSkippedCount = 0;
+    let nonSkippedCount = 0
     expense.splits.forEach((split) => {
-      const isCurrentSkipped = isSkipped(split);
+      const isCurrentSkipped = isSkipped(split)
       const willBeSkipped =
         split.user_username === personUsername
           ? !isCurrentSkipped
-          : isCurrentSkipped;
+          : isCurrentSkipped
       if (!willBeSkipped) {
-        nonSkippedCount++;
+        nonSkippedCount++
       }
-    });
+    })
 
-    if (nonSkippedCount === 0) return expense.splits;
+    if (nonSkippedCount === 0) return expense.splits
 
+    const price = parseFloat(expense.price)
     const newAmountPerPerson =
-      Math.round((expense.price / nonSkippedCount) * 100) / 100;
+      Math.round((price / nonSkippedCount) * 100) / 100
     const remainder =
-      Math.round((expense.price - newAmountPerPerson * nonSkippedCount) * 100) /
-      100;
+      Math.round((price - newAmountPerPerson * nonSkippedCount) * 100) / 100
 
     if (Math.abs(remainder) > 0.1) {
-      return null;
+      return null
     }
 
     return expense.splits.map((split) => {
-      const isCurrentSkipped = isSkipped(split);
+      const isCurrentSkipped = isSkipped(split)
       const willBeSkipped =
         split.user_username === personUsername
           ? !isCurrentSkipped
-          : isCurrentSkipped;
+          : isCurrentSkipped
 
       return {
         ...split,
-        amount_owed: willBeSkipped ? 0 : newAmountPerPerson,
-      };
-    });
-  };
+        amount_owed: String(willBeSkipped ? 0 : newAmountPerPerson),
+      }
+    })
+  }
 
   // Toggle checkbox: marks member as paid
-  const handleCheckboxClick = (expense, personUsername) => {
+  const handleCheckboxClick = (expense: Expense, personUsername: string) => {
     if (expense.paid_by_username === personUsername) {
-      return;
+      return
     }
 
     const updatedExpenses = expenses.map((exp) => {
-      if (exp.id !== expense.id) return exp;
+      if (exp.id !== expense.id) return exp
 
       const updatedSplits = exp.splits.map((split) => {
         if (split.user_username === personUsername) {
-          return { ...split, is_paid: !split.is_paid };
+          return { ...split, is_paid: !split.is_paid }
         }
-        return split;
-      });
-      return { ...exp, splits: updatedSplits };
-    });
+        return split
+      })
+      return { ...exp, splits: updatedSplits }
+    })
 
-    onExpensesUpdate(updatedExpenses);
-  };
+    onExpensesUpdate(updatedExpenses)
+  }
 
   // Toggle skip: sets amount_owed to 0 and redistributes to others
-  const handleSkip = (expense, personUsername, personUserId) => {
+  const handleSkip = (
+    expense: Expense,
+    personUsername: string,
+    personUserId: number,
+  ) => {
     if (hasCustomSplits(expense)) {
-      onOpenEditModal(expense, personUserId);
-      return;
+      onOpenEditModal(expense, personUserId)
+      return
     }
 
-    const updatedSplits = recalculateAmounts(expense, personUsername);
+    const updatedSplits = recalculateAmounts(expense, personUsername)
     if (updatedSplits === null) {
-      toast.error("Cannot skip — remainder would exceed 0.1 NPR");
-      return;
+      toast.error('Cannot skip — remainder would exceed 0.1 NPR')
+      return
     }
 
     const updatedExpenses = expenses.map((exp) => {
-      if (exp.id !== expense.id) return exp;
-      return { ...exp, splits: updatedSplits };
-    });
+      if (exp.id !== expense.id) return exp
+      return { ...exp, splits: updatedSplits }
+    })
 
-    onExpensesUpdate(updatedExpenses);
-  };
+    onExpensesUpdate(updatedExpenses)
+  }
 
-  const openDeleteDialog = (expense) => {
-    setDeleteDialog({ isOpen: true, expense, isLoading: false });
-  };
+  const openDeleteDialog = (expense: Expense) => {
+    setDeleteDialog({ isOpen: true, expense, isLoading: false })
+  }
 
   const closeDeleteDialog = () => {
-    setDeleteDialog({ isOpen: false, expense: null, isLoading: false });
-  };
+    setDeleteDialog({ isOpen: false, expense: null, isLoading: false })
+  }
 
   const handleConfirmDelete = async () => {
-    const expense = deleteDialog.expense;
-    setDeleteDialog((prev) => ({ ...prev, isLoading: true }));
+    const expense = deleteDialog.expense
+    if (!expense) return
+    setDeleteDialog((prev) => ({ ...prev, isLoading: true }))
 
     try {
-      const response = await fetch(
-        `/api/expenses/${expense.room_id}/${expense.id}`,
-        {
-          method: "DELETE",
-          credentials: "include",
-        },
-      );
-
-      if (response.ok) {
-        const updatedExpenses = expenses.filter((exp) => exp.id !== expense.id);
-        onExpensesPersisted(updatedExpenses);
-        closeDeleteDialog();
-      } else {
-        toast.error("Failed to delete expense");
-        setDeleteDialog((prev) => ({ ...prev, isLoading: false }));
-      }
+      await deleteExpense(expense.room_id, expense.id)
+      const updatedExpenses = expenses.filter((exp) => exp.id !== expense.id)
+      onExpensesPersisted(updatedExpenses)
+      closeDeleteDialog()
     } catch (error) {
-      console.error("Error deleting expense:", error);
-      toast.error("Failed to delete expense");
-      setDeleteDialog((prev) => ({ ...prev, isLoading: false }));
+      console.error('Error deleting expense:', error)
+      toast.error('Failed to delete expense')
+      setDeleteDialog((prev) => ({ ...prev, isLoading: false }))
     }
-  };
+  }
 
   const handleSaveButton = async () => {
-    if (isSaving) return;
-    setIsSaving(true);
+    if (isSaving) return
+    setIsSaving(true)
 
-    const payload = expenses.map((expense) => {
+    const payload: ExpenseState[] = expenses.map((expense) => {
       const allCompleted = expense.splits.every(
-        (split) => split.amount_owed === 0 || split.is_paid,
-      );
+        (split) => parseFloat(split.amount_owed) === 0 || split.is_paid,
+      )
 
       return {
         id: expense.id,
@@ -179,28 +186,21 @@ function ExpenseList({
           is_paid: split.is_paid,
         })),
         transaction_complete: allCompleted,
-      };
-    });
+      }
+    })
 
     try {
-      const response = await fetch(`/api/expenses/${roomId}/save-states`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ expenses: payload }),
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        toast.success("Changes saved successfully");
-        onSaved();
-      }
+      if (!roomId) return
+      await saveExpenseStates(roomId, payload)
+      toast.success('Changes saved successfully')
+      onSaved()
     } catch (error) {
-      console.error("Error saving states:", error);
-      toast.error("Failed to save changes");
+      console.error('Error saving states:', error)
+      toast.error('Failed to save changes')
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -209,7 +209,7 @@ function ExpenseList({
           {/* Header */}
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-foreground flex items-center gap-2">
-              <FontAwesomeIcon icon={faClock} className="text-primary" />
+              <Clock className="text-primary" size={20} />
               Recent Expenses
             </h2>
             <div className="flex items-center gap-3">
@@ -217,7 +217,7 @@ function ExpenseList({
                 onClick={onOpenBalanceSheet}
                 className="px-4 py-2 text-sm font-medium btn-secondary-expense flex items-center gap-2"
               >
-                <FontAwesomeIcon icon={faUser} className="text-warning" />
+                <User className="text-warning" size={14} />
                 View Balances
               </button>
               {isDirty && (
@@ -251,7 +251,7 @@ function ExpenseList({
                     Saving...
                   </span>
                 ) : (
-                  "Save Changes"
+                  'Save Changes'
                 )}
               </button>
             </div>
@@ -280,8 +280,8 @@ function ExpenseList({
                         </span>
                       </div>
                       <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <FontAwesomeIcon icon={faUser} className="text-xs" />
-                        Paid by{" "}
+                        <User className="text-xs" size={12} />
+                        Paid by{' '}
                         <span className="font-medium">
                           {expense.paid_by_username}
                         </span>
@@ -295,7 +295,7 @@ function ExpenseList({
                         className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer shrink-0 lg:hidden"
                         title="Edit splits"
                       >
-                        <FontAwesomeIcon icon={faEdit} className="text-sm" />
+                        <Pencil size={14} />
                       </button>
 
                       {/* Delete Button - Mobile only */}
@@ -304,7 +304,7 @@ function ExpenseList({
                         className="p-2 text-expense hover:bg-expense-light rounded-lg transition-colors cursor-pointer shrink-0 lg:hidden"
                         title="Delete this expense"
                       >
-                        <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
@@ -313,20 +313,20 @@ function ExpenseList({
                   <div className="flex  items-center gap-2 justify-start lg:w-3/5">
                     <div className="flex flex-wrap items-center gap-2 justify-start w-full lg:w-auto ">
                       {expense.splits.map((split) => {
-                        const isExcluded = isSkipped(split);
-                        const isPaid = split.is_paid;
+                        const isExcluded = isSkipped(split)
+                        const isPaid = split.is_paid
                         const isPaidByPerson =
-                          expense.paid_by_username === split.user_username;
+                          expense.paid_by_username === split.user_username
 
                         return (
                           <div key={split.id} className="relative">
                             <button
                               className={`px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2 min-w-[100px] justify-center cursor-pointer ${
                                 isExcluded
-                                  ? "bg-secondary text-muted-foreground border border-border"
+                                  ? 'bg-secondary text-muted-foreground border border-border'
                                   : isPaid
-                                    ? "bg-income-light text-income border border-income/20"
-                                    : "bg-expense-light text-expense border border-expense/20"
+                                    ? 'bg-income-light text-income border border-income/20'
+                                    : 'bg-expense-light text-expense border border-expense/20'
                               }`}
                               onClick={() =>
                                 handleSkip(expense, split.user_username, split.user_id)
@@ -342,27 +342,22 @@ function ExpenseList({
                               <button
                                 className={`absolute -top-1 -right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200 cursor-pointer ${
                                   isPaid
-                                    ? "bg-income border-income text-income-foreground"
-                                    : "bg-card border-border hover:border-primary"
+                                    ? 'bg-income border-income text-income-foreground'
+                                    : 'bg-card border-border hover:border-primary'
                                 }`}
                                 onClick={(e) => {
-                                  e.stopPropagation();
+                                  e.stopPropagation()
                                   handleCheckboxClick(
                                     expense,
                                     split.user_username,
-                                  );
+                                  )
                                 }}
                               >
-                                {isPaid && (
-                                  <FontAwesomeIcon
-                                    icon={faCheck}
-                                    className="text-xs"
-                                  />
-                                )}
+                                {isPaid && <Check size={12} />}
                               </button>
                             )}
                           </div>
-                        );
+                        )
                       })}
                     </div>
 
@@ -373,14 +368,14 @@ function ExpenseList({
                         className="p-2 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
                         title="Edit splits"
                       >
-                        <FontAwesomeIcon icon={faEdit} className="text-sm" />
+                        <Pencil size={14} />
                       </button>
                       <button
                         onClick={() => openDeleteDialog(expense)}
                         className="p-2 text-expense hover:bg-expense-light rounded-lg transition-colors cursor-pointer"
                         title="Delete this expense"
                       >
-                        <FontAwesomeIcon icon={faTrash} className="text-sm" />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
@@ -394,9 +389,9 @@ function ExpenseList({
       {/* Empty State */}
       {expenses.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 state-panel border-dashed border-2 border-border-light">
-          <FontAwesomeIcon
-            icon={faClock}
+          <Clock
             className="text-4xl text-muted-foreground mb-3"
+            size={36}
           />
           <p className="text-foreground font-medium">No expenses yet</p>
           <p className="text-muted-foreground text-sm">
@@ -414,7 +409,7 @@ function ExpenseList({
         onCancel={closeDeleteDialog}
       />
     </div>
-  );
+  )
 }
 
-export default ExpenseList;
+export default ExpenseList

@@ -1,259 +1,213 @@
-import { useState, useEffect, useRef, useContext } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AuthContext } from "../../contexts/AuthContext.js";
-import { toast } from "sonner";
-import { 
-  faUser, 
-  faLock, 
-  faUserPlus, 
-  faEye, 
-  faEyeSlash, 
-  faEnvelope, 
-  faShieldAlt,
-  faArrowLeft,
-  faClock
-} from "@fortawesome/free-solid-svg-icons";
+import { useState, useEffect, useRef, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
+import {
+  User,
+  Lock,
+  UserPlus,
+  Eye,
+  EyeOff,
+  Mail,
+  ShieldCheck,
+  ArrowLeft,
+  Clock,
+} from 'lucide-react'
+import { useAuth } from '../../hooks/useAuth'
+import { sendCode, verifyCode, signup } from '../../api/auth'
 
 function Signup() {
   // Step management - skip to step 3 (username/password) if coming from invite flow
   const [currentStep, setCurrentStep] = useState(() => {
-    const skipVerification = new URLSearchParams(window.location.search).get("skipVerification") === "true";
-    return skipVerification ? 3 : 1;
-  });
-  
+    const skipVerification = new URLSearchParams(window.location.search).get('skipVerification') === 'true'
+    return skipVerification ? 3 : 1
+  })
+
   // Form data
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  
+  const [email, setEmail] = useState('')
+  const [otp, setOtp] = useState<string[]>(['', '', '', '', '', ''])
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+
   // UI states
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [canResendOtp, setCanResendOtp] = useState(false);
-  const [resendTimer, setResendTimer] = useState(60);
-  
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
-  const { setIsAuthenticated, setUser } = useContext(AuthContext);
-  const otpRefs = useRef([]);
-  const inviteEmail = searchParams.get("email") || "";
-  
+  const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [canResendOtp, setCanResendOtp] = useState(false)
+  const [resendTimer, setResendTimer] = useState(60)
+
+  const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const { setIsAuthenticated, setUser } = useAuth()
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([])
+  const inviteEmail = searchParams.get('email') || ''
+
   // Decode the redirect URL if it exists
-  const encodedRedirect = searchParams.get("redirect");
-  const redirectUrl = encodedRedirect ? decodeURIComponent(encodedRedirect) : null;
+  const encodedRedirect = searchParams.get('redirect')
+  const redirectUrl = encodedRedirect ? decodeURIComponent(encodedRedirect) : null
 
   // Prefill invite email when user is redirected from invite flow.
   useEffect(() => {
     if (inviteEmail) {
-      setEmail(inviteEmail);
+      setEmail(inviteEmail)
     }
-  }, [inviteEmail]);
+  }, [inviteEmail])
 
   // Timer for resend OTP
   useEffect(() => {
     if (currentStep === 2 && resendTimer > 0) {
       const timer = setTimeout(() => {
-        setResendTimer(resendTimer - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
+        setResendTimer(resendTimer - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
     } else if (resendTimer === 0) {
-      setCanResendOtp(true);
+      setCanResendOtp(true)
     }
-  }, [currentStep, resendTimer]);
+  }, [currentStep, resendTimer])
 
   // Step 1: Send OTP to email
-  const handleEmailSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleEmailSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
 
-    const trimmedEmail = email.trim();
-    // Basic Gmail validation
+    const trimmedEmail = email.trim()
+    // Gmail validation
     if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(trimmedEmail)) {
-      toast.error("Please enter a valid Gmail address.");
-      setIsLoading(false);
-      return;
+      toast.error('Please enter a valid Gmail address.')
+      setIsLoading(false)
+      return
     }
-    setEmail(trimmedEmail);
+    setEmail(trimmedEmail)
 
     try {
-      const response = await fetch("/api/auth/send-code", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmedEmail }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        toast.error(data.message || data.error || "Failed to send OTP. Please try again.");
-        return;
-      }
-
-      setCurrentStep(2);
-      setResendTimer(60);
-      setCanResendOtp(false);
-      toast.success("Verification code sent to your email");
+      await sendCode({ email: trimmedEmail })
+      setCurrentStep(2)
+      setResendTimer(60)
+      setCanResendOtp(false)
+      toast.success('Verification code sent to your email')
     } catch (error) {
-      console.error("Error sending OTP:", error);
-      toast.error("Network error. Please check your connection and try again.");
+      console.error('Error sending OTP:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to send OTP. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Handle OTP input
-  const handleOtpChange = (index, value) => {
+  const handleOtpChange = (index: number, value: string) => {
     if (value.length <= 1 && /^\d*$/.test(value)) {
-      const newOtp = [...otp];
-      newOtp[index] = value;
-      setOtp(newOtp);
+      const newOtp = [...otp]
+      newOtp[index] = value
+      setOtp(newOtp)
 
       // Auto-focus next input
       if (value && index < 5) {
-        otpRefs.current[index + 1]?.focus();
+        otpRefs.current[index + 1]?.focus()
       }
     }
-  };
+  }
 
   // Handle OTP backspace
-  const handleOtpKeyDown = (index, e) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
+  const handleOtpKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus()
     }
-  };
+  }
 
   // Handle OTP paste
-  const handleOtpPaste = (e) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!pasted) return;
+  const handleOtpPaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (!pasted) return
 
-    const newOtp = [...otp];
+    const newOtp = [...otp]
     for (let i = 0; i < pasted.length && i < 6; i++) {
-      newOtp[i] = pasted[i];
+      newOtp[i] = pasted[i]
     }
-    setOtp(newOtp);
+    setOtp(newOtp)
 
-    const nextIndex = Math.min(pasted.length, 5);
-    otpRefs.current[nextIndex]?.focus();
-  };
+    const nextIndex = Math.min(pasted.length, 5)
+    otpRefs.current[nextIndex]?.focus()
+  }
 
   // Step 2: Verify OTP
-  const handleOtpSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleOtpSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
 
-    const otpCode = otp.join("");
+    const otpCode = otp.join('')
     if (otpCode.length !== 6) {
-      toast.error("Please enter the complete 6-digit OTP.");
-      setIsLoading(false);
-      return;
+      toast.error('Please enter the complete 6-digit OTP.')
+      setIsLoading(false)
+      return
     }
 
     try {
-      const response = await fetch("/api/auth/verify-code", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: otpCode }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        toast.error(data.message || data.error || "Invalid OTP. Please try again.");
-        return;
-      }
-
-      setCurrentStep(3);
-      toast.success("Email verified successfully");
+      await verifyCode({ email, code: otpCode })
+      setCurrentStep(3)
+      toast.success('Email verified successfully')
     } catch (error) {
-      console.error("Error verifying OTP:", error);
-      toast.error("Network error. Please check your connection and try again.");
+      console.error('Error verifying OTP:', error)
+      toast.error(error instanceof Error ? error.message : 'Invalid OTP. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Resend OTP
   const handleResendOtp = async () => {
-    setIsLoading(true);
+    setIsLoading(true)
 
     try {
-      const response = await fetch("/api/auth/send-code", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      });
-      
-      if (response.ok) {
-        setOtp(["", "", "", "", "", ""]);
-        setResendTimer(60);
-        setCanResendOtp(false);
-        // Focus first OTP input
-        otpRefs.current[0]?.focus();
-        toast.success("New verification code sent");
-      } else {
-        toast.error("Failed to resend OTP. Please try again.");
-      }
-    } catch {
-      toast.error("Network error. Please try again.");
+      await sendCode({ email })
+      setOtp(['', '', '', '', '', ''])
+      setResendTimer(60)
+      setCanResendOtp(false)
+      // Focus first OTP input
+      otpRefs.current[0]?.focus()
+      toast.success('New verification code sent')
+    } catch (error) {
+      console.error('Error resending OTP:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to resend OTP. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Step 3: Complete signup
-  const handleSignupComplete = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleSignupComplete = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
 
     // Password confirmation check
     if (password !== confirmPassword) {
-      toast.error("Passwords do not match.");
-      setIsLoading(false);
-      return;
+      toast.error('Passwords do not match.')
+      setIsLoading(false)
+      return
     }
 
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, username, password }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        toast.error(data.message || data.error || "Signup failed. Please try again.");
-        return;
-      }
-
-      const data = await response.json();
+      const data = await signup({ email, username, password })
       // Signup successful = already authenticated with correct credentials
-      setIsAuthenticated(true);
-      if (data.user) setUser(data.user);
-      toast.success("Account created successfully!");
+      setIsAuthenticated(true)
+      if (data.user) setUser(data.user)
+      toast.success('Account created successfully!')
       // Redirect to the stored URL or dashboard if no redirect was provided
-      navigate(redirectUrl || "/rooms");
+      navigate(redirectUrl || '/rooms')
     } catch (error) {
-      console.error("Error completing signup:", error);
-      toast.error("Network error. Please check your connection and try again.");
+      console.error('Error completing signup:', error)
+      toast.error(error instanceof Error ? error.message : 'Signup failed. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Go back to previous step
   const goBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      setCurrentStep(currentStep - 1)
     }
-  };
+  }
 
   // Render step content
   const renderStepContent = () => {
@@ -267,7 +221,7 @@ function Signup() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faEnvelope} className="text-muted-foreground text-sm" />
+                  <Mail className="text-muted-foreground" size={14} />
                 </div>
                 <input
                   id="email"
@@ -297,13 +251,13 @@ function Signup() {
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  <FontAwesomeIcon icon={faEnvelope} />
+                  <Mail size={14} />
                   Send Verification Code
                 </span>
               )}
             </button>
           </form>
-        );
+        )
 
       case 2:
         return (
@@ -316,10 +270,12 @@ function Signup() {
                 {otp.map((digit, index) => (
                   <input
                     key={index}
-                    ref={(el) => (otpRefs.current[index] = el)}
+                    ref={(el) => {
+                      otpRefs.current[index] = el
+                    }}
                     type="text"
                     inputMode="numeric"
-                    maxLength="1"
+                    maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(index, e)}
@@ -334,7 +290,7 @@ function Signup() {
             <div className="text-center space-y-3">
               {!canResendOtp ? (
                 <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-                  <FontAwesomeIcon icon={faClock} className="text-xs" />
+                  <Clock className="text-xs" size={12} />
                   Resend code in {resendTimer}s
                 </p>
               ) : (
@@ -351,7 +307,7 @@ function Signup() {
 
             <button
               type="submit"
-              disabled={isLoading || otp.some(digit => !digit)}
+              disabled={isLoading || otp.some((digit) => !digit)}
               className="btn-primary-expense w-full cursor-pointer py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
@@ -364,13 +320,13 @@ function Signup() {
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  <FontAwesomeIcon icon={faShieldAlt} />
+                  <ShieldCheck size={14} />
                   Verify Code
                 </span>
               )}
             </button>
           </form>
-        );
+        )
 
       case 3:
         return (
@@ -381,7 +337,7 @@ function Signup() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faUser} className="text-muted-foreground text-sm" />
+                  <User className="text-muted-foreground" size={14} />
                 </div>
                 <input
                   id="username"
@@ -402,11 +358,11 @@ function Signup() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faLock} className="text-muted-foreground text-sm" />
+                  <Lock className="text-muted-foreground" size={14} />
                 </div>
                 <input
                   id="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="Create a strong password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -420,10 +376,11 @@ function Signup() {
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
                 >
-                  <FontAwesomeIcon 
-                    icon={showPassword ? faEyeSlash : faEye} 
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" 
-                  />
+                  {showPassword ? (
+                    <EyeOff className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" size={14} />
+                  ) : (
+                    <Eye className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" size={14} />
+                  )}
                 </button>
               </div>
             </div>
@@ -434,11 +391,11 @@ function Signup() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faLock} className="text-muted-foreground text-sm" />
+                  <Lock className="text-muted-foreground" size={14} />
                 </div>
                 <input
                   id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Confirm your password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -452,10 +409,11 @@ function Signup() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   disabled={isLoading}
                 >
-                  <FontAwesomeIcon 
-                    icon={showConfirmPassword ? faEyeSlash : faEye} 
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" 
-                  />
+                  {showConfirmPassword ? (
+                    <EyeOff className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" size={14} />
+                  ) : (
+                    <Eye className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" size={14} />
+                  )}
                 </button>
               </div>
             </div>
@@ -475,43 +433,43 @@ function Signup() {
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  <FontAwesomeIcon icon={faUserPlus} />
+                  <UserPlus size={14} />
                   Create Account
                 </span>
               )}
             </button>
           </form>
-        );
+        )
 
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   // Get step title and description
   const getStepInfo = () => {
     switch (currentStep) {
       case 1:
         return {
-          title: "Create Account",
-          description: "Enter your Gmail address to get started"
-        };
+          title: 'Create Account',
+          description: 'Enter your Gmail address to get started',
+        }
       case 2:
         return {
-          title: "Verify Email",
-          description: "We've sent a verification code to your email"
-        };
+          title: 'Verify Email',
+          description: "We've sent a verification code to your email",
+        }
       case 3:
         return {
-          title: "Complete Setup",
-          description: "Choose your username and password"
-        };
+          title: 'Complete Setup',
+          description: 'Choose your username and password',
+        }
       default:
-        return { title: "", description: "" };
+        return { title: '', description: '' }
     }
-  };
+  }
 
-  const { title, description } = getStepInfo();
+  const { title, description } = getStepInfo()
 
   return (
     <div className="min-h-screen page-shell flex items-center justify-center px-4 py-12">
@@ -519,7 +477,7 @@ function Signup() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
-            <FontAwesomeIcon icon={faUserPlus} className="text-primary-foreground text-2xl" />
+            <UserPlus className="text-primary-foreground" size={24} />
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">{title}</h1>
           <p className="text-muted-foreground">{description}</p>
@@ -527,45 +485,45 @@ function Signup() {
 
         {/* Signup Form */}
         <div className="expense-form p-8">
-        {/* Back Button */}
-        {currentStep > 1 && (
-          <button
-            onClick={goBack}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 mb-6"
-          >
-            <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
-            Back
-          </button>
-        )}
-
-        {/* Step Content */}
-        {renderStepContent()}
-
-        {/* Footer */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Already have an account?{" "}
+          {/* Back Button */}
+          {currentStep > 1 && (
             <button
-              onClick={() => {
-                // Preserve redirect parameters when navigating to login
-                const loginParams = new URLSearchParams();
-                if (redirectUrl) {
-                  loginParams.set("redirect", encodeURIComponent(redirectUrl));
-                }
-                const loginUrl = loginParams.toString() ? `/login?${loginParams.toString()}` : "/login";
-                navigate(loginUrl);
-              }}
-              type="button"
-              className="text-primary hover:text-primary/80 font-medium transition-colors duration-200"
+              onClick={goBack}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 mb-6"
             >
-              Sign in here
+              <ArrowLeft className="text-xs" size={12} />
+              Back
             </button>
-          </p>
-        </div>
+          )}
+
+          {/* Step Content */}
+          {renderStepContent()}
+
+          {/* Footer */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Already have an account?{' '}
+              <button
+                onClick={() => {
+                  // Preserve redirect parameters when navigating to login
+                  const loginParams = new URLSearchParams()
+                  if (redirectUrl) {
+                    loginParams.set('redirect', encodeURIComponent(redirectUrl))
+                  }
+                  const loginUrl = loginParams.toString() ? `/login?${loginParams.toString()}` : '/login'
+                  navigate(loginUrl)
+                }}
+                type="button"
+                className="text-primary hover:text-primary/80 font-medium transition-colors duration-200"
+              >
+                Sign in here
+              </button>
+            </p>
+          </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default Signup;
+export default Signup

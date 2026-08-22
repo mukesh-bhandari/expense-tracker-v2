@@ -1,9 +1,23 @@
-function ConfirmDeleteDialog({ isOpen, itemName, isLoading, onConfirm, onCancel }) {
-  if (!isOpen) return null;
-  
+interface ConfirmDeleteDialogProps {
+  isOpen: boolean
+  itemName?: string
+  isLoading: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}
+
+function ConfirmDeleteDialog({
+  isOpen,
+  itemName,
+  isLoading,
+  onConfirm,
+  onCancel,
+}: ConfirmDeleteDialogProps) {
+  if (!isOpen) return null
+
   return (
     <>
-      <div 
+      <div
         className="fixed inset-0 modal-backdrop z-40"
         onClick={isLoading ? undefined : onCancel}
       />
@@ -30,7 +44,7 @@ function ConfirmDeleteDialog({ isOpen, itemName, isLoading, onConfirm, onCancel 
         </div>
       </div>
     </>
-  );
+  )
 }
 
-export default ConfirmDeleteDialog;
+export default ConfirmDeleteDialog

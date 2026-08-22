@@ -1,11 +1,14 @@
-import { useContext } from "react";
-import { Navigate } from "react-router-dom";
-import { AuthContext } from "../contexts/AuthContext.js";
+import type { ReactNode } from 'react'
+import { Navigate } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 
-const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated } = useContext(AuthContext);
+interface ProtectedRouteProps {
+  children: ReactNode
+}
 
-  // Show nothing while loading
+function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { isAuthenticated } = useAuth()
+
   if (isAuthenticated === null) {
     return (
       <div className="min-h-screen page-shell flex items-center justify-center px-4">
@@ -17,15 +20,14 @@ const ProtectedRoute = ({ children }) => {
           <p className="text-sm text-muted-foreground">Checking your session and preparing the app.</p>
         </div>
       </div>
-    );
+    )
   }
 
-  // Redirect to login if not authenticated
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace />
   }
 
-  return children;
-};
+  return children
+}
 
-export default ProtectedRoute;
+export default ProtectedRoute

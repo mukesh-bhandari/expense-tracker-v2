@@ -1,116 +1,151 @@
-import { useState } from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faEdit } from "@fortawesome/free-solid-svg-icons";
+import { useState } from 'react'
+import { Pencil } from 'lucide-react'
+import type { Expense, Member, Split } from '../../../types'
 
-function buildInitialRows(expense, members, initialSkipUserId) {
-  const splitsMap = {};
+interface SplitRow {
+  userId: number
+  username: string
+  amount: string
+  skipped: boolean
+  prevAmount: string | null
+}
+
+interface ExpenseEditModalProps {
+  expense: Expense
+  members: Member[]
+  onClose: () => void
+  onSave: (expenseId: number, updatedSplits: Split[]) => Promise<void>
+  initialSkipUserId?: number | null
+}
+
+function buildInitialRows(
+  expense: Expense,
+  members: Member[],
+  initialSkipUserId: number | null | undefined,
+): SplitRow[] {
+  const splitsMap: Record<number, Split> = {}
   expense.splits.forEach((split) => {
-    splitsMap[split.user_id] = split;
-  });
+    splitsMap[split.user_id] = split
+  })
 
-  const initialized = members.map((member) => {
-    const split = splitsMap[member.id];
+  const initialized: SplitRow[] = members.map((member) => {
+    const split = splitsMap[member.id]
     if (split) {
-      const amountVal = parseFloat(split.amount_owed);
+      const amountVal = parseFloat(split.amount_owed)
       return {
         userId: member.id,
         username: member.username,
         amount: String(amountVal),
         skipped: amountVal === 0,
         prevAmount: amountVal === 0 ? null : String(amountVal),
-      };
+      }
     }
     return {
       userId: member.id,
       username: member.username,
-      amount: "0",
+      amount: '0',
       skipped: true,
       prevAmount: null,
-    };
-  });
+    }
+  })
 
   if (initialSkipUserId) {
-    const idx = initialized.findIndex((r) => r.userId === initialSkipUserId);
+    const idx = initialized.findIndex((r) => r.userId === initialSkipUserId)
     if (idx !== -1) {
-      const wasSkipped = initialized[idx].skipped;
-      if (wasSkipped) {
-        initialized[idx] = { ...initialized[idx], skipped: false, amount: initialized[idx].prevAmount ?? "0" };
+      if (initialized[idx].skipped) {
+        initialized[idx] = {
+          ...initialized[idx],
+          skipped: false,
+          amount: initialized[idx].prevAmount ?? '0',
+        }
       } else {
-        initialized[idx] = { ...initialized[idx], skipped: true, prevAmount: initialized[idx].amount, amount: "0" };
+        initialized[idx] = {
+          ...initialized[idx],
+          skipped: true,
+          prevAmount: initialized[idx].amount,
+          amount: '0',
+        }
       }
     }
   }
 
-  return initialized;
+  return initialized
 }
 
-function ExpenseEditModal({ expense, members, onClose, onSave, initialSkipUserId = null }) {
-  const [rows, setRows] = useState(() => buildInitialRows(expense, members, initialSkipUserId));
-  const [isSaving, setIsSaving] = useState(false);
+function ExpenseEditModal({
+  expense,
+  members,
+  onClose,
+  onSave,
+  initialSkipUserId = null,
+}: ExpenseEditModalProps) {
+  const [rows, setRows] = useState<SplitRow[]>(() =>
+    buildInitialRows(expense, members, initialSkipUserId),
+  )
+  const [isSaving, setIsSaving] = useState(false)
 
   const totalAllocated = rows.reduce(
     (sum, row) => sum + (parseFloat(row.amount) || 0),
-    0
-  );
-  const remaining = parseFloat(expense.price) - totalAllocated;
-  const nonSkippedCount = rows.filter((r) => !r.skipped).length;
+    0,
+  )
+  const remaining = parseFloat(expense.price) - totalAllocated
+  const nonSkippedCount = rows.filter((r) => !r.skipped).length
 
-  const canSave =
-    Math.abs(remaining) <= 0.1 && nonSkippedCount >= 1;
+  const canSave = Math.abs(remaining) <= 0.1 && nonSkippedCount >= 1
 
-  const handleToggleSkip = (userId) => {
+  const handleToggleSkip = (userId: number) => {
     setRows((prev) =>
       prev.map((row) => {
-        if (row.userId !== userId) return row;
+        if (row.userId !== userId) return row
         if (row.skipped) {
-          // Unskip: restore the previous (pre-skip) amount
-          return { ...row, skipped: false, amount: row.prevAmount ?? "0" };
+          return { ...row, skipped: false, amount: row.prevAmount ?? '0' }
         }
-        // Skip: zero the amount but remember it for later restore
-        return { ...row, skipped: true, prevAmount: row.amount, amount: "0" };
-      })
-    );
-  };
+        return { ...row, skipped: true, prevAmount: row.amount, amount: '0' }
+      }),
+    )
+  }
 
-  const handleAmountChange = (userId, value) => {
+  const handleAmountChange = (userId: number, value: string) => {
     setRows((prev) =>
-      prev.map((row) => (row.userId === userId ? { ...row, amount: value } : row))
-    );
-  };
+      prev.map((row) => (row.userId === userId ? { ...row, amount: value } : row)),
+    )
+  }
 
   const handleDistributeEqually = () => {
-    const priceVal = parseFloat(expense.price);
-    const eligible = rows.filter((r) => !r.skipped);
-    if (eligible.length === 0) return;
+    const priceVal = parseFloat(expense.price)
+    const eligible = rows.filter((r) => !r.skipped)
+    if (eligible.length === 0) return
 
-    const share = Math.round((priceVal / eligible.length) * 100) / 100;
+    const share = Math.round((priceVal / eligible.length) * 100) / 100
 
     setRows((prev) =>
       prev.map((row) => {
-        if (row.skipped) return row;
-        return { ...row, amount: String(share) };
-      })
-    );
-  };
+        if (row.skipped) return row
+        return { ...row, amount: String(share) }
+      }),
+    )
+  }
 
   const handleSave = async () => {
-    if (isSaving) return;
-    setIsSaving(true);
+    if (isSaving) return
+    setIsSaving(true)
 
     const updatedSplits = expense.splits.map((split) => {
-      const row = rows.find((r) => r.userId === split.user_id);
+      const row = rows.find((r) => r.userId === split.user_id)
       if (row) {
         return {
           ...split,
-          amount_owed: row.skipped ? 0 : parseFloat(parseFloat(row.amount).toFixed(2)),
-        };
+          amount_owed: row.skipped
+            ? '0'
+            : String(parseFloat(parseFloat(row.amount).toFixed(2))),
+        }
       }
-      return split;
-    });
+      return split
+    })
 
-    await onSave(expense.id, updatedSplits);
-    setIsSaving(false);
-  };
+    await onSave(expense.id, updatedSplits)
+    setIsSaving(false)
+  }
 
   return (
     <>
@@ -123,7 +158,7 @@ function ExpenseEditModal({ expense, members, onClose, onSave, initialSkipUserId
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-border">
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <FontAwesomeIcon icon={faEdit} className="text-primary" />
+              <Pencil className="text-primary" size={18} />
               Edit Split
             </h3>
             <button
@@ -144,7 +179,7 @@ function ExpenseEditModal({ expense, members, onClose, onSave, initialSkipUserId
                   <span className="font-medium">Expense:</span> {expense.item}
                 </p>
                 <p>
-                  <span className="font-medium">Total Amount:</span> NPR{" "}
+                  <span className="font-medium">Total Amount:</span> NPR{' '}
                   {parseFloat(expense.price).toFixed(2)}
                 </p>
               </div>
@@ -171,18 +206,18 @@ function ExpenseEditModal({ expense, members, onClose, onSave, initialSkipUserId
                         onClick={() => handleToggleSkip(row.userId)}
                         className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
                           row.skipped
-                            ? "bg-secondary text-muted-foreground border border-border"
-                            : "bg-primary/10 text-primary border border-primary/20"
+                            ? 'bg-secondary text-muted-foreground border border-border'
+                            : 'bg-primary/10 text-primary border border-primary/20'
                         }`}
                       >
-                        {row.skipped ? "Skipped" : "Skip"}
+                        {row.skipped ? 'Skipped' : 'Skip'}
                       </button>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         disabled={row.skipped}
-                        value={row.skipped ? "0" : row.amount}
+                        value={row.skipped ? '0' : row.amount}
                         onChange={(e) =>
                           handleAmountChange(row.userId, e.target.value)
                         }
@@ -216,8 +251,8 @@ function ExpenseEditModal({ expense, members, onClose, onSave, initialSkipUserId
                   <span
                     className={`font-bold ${
                       Math.abs(remaining) > 0.1
-                        ? "text-red-500"
-                        : "text-income"
+                        ? 'text-red-500'
+                        : 'text-income'
                     }`}
                   >
                     NPR {remaining.toFixed(2)}
@@ -264,14 +299,14 @@ function ExpenseEditModal({ expense, members, onClose, onSave, initialSkipUserId
                   Saving...
                 </span>
               ) : (
-                "Save"
+                'Save'
               )}
             </button>
           </div>
         </div>
       </div>
     </>
-  );
+  )
 }
 
-export default ExpenseEditModal;
+export default ExpenseEditModal
