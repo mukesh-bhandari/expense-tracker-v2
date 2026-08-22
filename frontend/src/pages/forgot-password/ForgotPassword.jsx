@@ -54,19 +54,21 @@ function ForgotPassword() {
     try {
       const response = await fetch("/api/auth/send-code", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, purpose: "password_reset" }),
       });
-      const data = await response.json();
 
-      if (response.ok) {
-        setCurrentStep(2);
-        setResendTimer(60);
-        setCanResendOtp(false);
-        toast.success("Reset code sent to your email");
-      } else {
-        toast.error(data.message || "Failed to send reset code. Please try again.");
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.message || data.error || "Failed to send reset code. Please try again.");
+        return;
       }
+
+      setCurrentStep(2);
+      setResendTimer(60);
+      setCanResendOtp(false);
+      toast.success("Reset code sent to your email");
     } catch (error) {
       console.error("Error sending reset code:", error);
       toast.error("Network error. Please check your connection and try again.");
@@ -126,17 +128,19 @@ function ForgotPassword() {
     try {
       const response = await fetch("/api/auth/verify-code", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code: otpCode, purpose: "password_reset" }),
       });
-      const data = await response.json();
 
-      if (response.ok) {
-        setCurrentStep(3);
-        toast.success("Code verified successfully");
-      } else {
-        toast.error(data.error || "Invalid code. Please try again.");
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.error || data.message || "Invalid code. Please try again.");
+        return;
       }
+
+      setCurrentStep(3);
+      toast.success("Code verified successfully");
     } catch (error) {
       console.error("Error verifying code:", error);
       toast.error("Network error. Please check your connection and try again.");
@@ -152,6 +156,7 @@ function ForgotPassword() {
     try {
       const response = await fetch("/api/auth/send-code", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, purpose: "password_reset" }),
       });
@@ -195,14 +200,15 @@ function ForgotPassword() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code: otp.join(""), newPassword }),
       });
-      const data = await response.json();
 
-      if (response.ok) {
-        toast.success("Password reset successful! Please log in.");
-        navigate("/login");
-      } else {
-        toast.error(data.error || "Failed to reset password. Please try again.");
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.error || data.message || "Failed to reset password. Please try again.");
+        return;
       }
+
+      toast.success("Password reset successful! Please log in.");
+      navigate("/login");
     } catch (error) {
       console.error("Error resetting password:", error);
       toast.error("Network error. Please check your connection and try again.");

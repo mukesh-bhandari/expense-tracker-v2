@@ -81,19 +81,21 @@ function Signup() {
     try {
       const response = await fetch("/api/auth/send-code", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      const data = await response.json();
-      
-      if (response.ok) {
-        setCurrentStep(2);
-        setResendTimer(60);
-        setCanResendOtp(false);
-        toast.success("Verification code sent to your email");
-      } else {
-        toast.error(data.message || "Failed to send OTP. Please try again.");
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.message || data.error || "Failed to send OTP. Please try again.");
+        return;
       }
+
+      setCurrentStep(2);
+      setResendTimer(60);
+      setCanResendOtp(false);
+      toast.success("Verification code sent to your email");
     } catch (error) {
       console.error("Error sending OTP:", error);
       toast.error("Network error. Please check your connection and try again.");
@@ -154,17 +156,19 @@ function Signup() {
     try {
       const response = await fetch("/api/auth/verify-code", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, code: otpCode }),
       });
-      const data = await response.json();
-      
-      if (response.ok) {
-        setCurrentStep(3);
-        toast.success("Email verified successfully");
-      } else {
-        toast.error(data.message || "Invalid OTP. Please try again.");
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.message || data.error || "Invalid OTP. Please try again.");
+        return;
       }
+
+      setCurrentStep(3);
+      toast.success("Email verified successfully");
     } catch (error) {
       console.error("Error verifying OTP:", error);
       toast.error("Network error. Please check your connection and try again.");
@@ -180,6 +184,7 @@ function Signup() {
     try {
       const response = await fetch("/api/auth/send-code", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
@@ -220,18 +225,20 @@ function Signup() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, username, password }),
       });
-      const data = await response.json();
-      
-      if (response.ok) {
-        // Signup successful = already authenticated with correct credentials
-        setIsAuthenticated(true);
-        if (data.user) setUser(data.user);
-        toast.success("Account created successfully!");
-        // Redirect to the stored URL or dashboard if no redirect was provided
-        navigate(redirectUrl || "/rooms");
-      } else {
-        toast.error(data.message || "Signup failed. Please try again.");
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.message || data.error || "Signup failed. Please try again.");
+        return;
       }
+
+      const data = await response.json();
+      // Signup successful = already authenticated with correct credentials
+      setIsAuthenticated(true);
+      if (data.user) setUser(data.user);
+      toast.success("Account created successfully!");
+      // Redirect to the stored URL or dashboard if no redirect was provided
+      navigate(redirectUrl || "/rooms");
     } catch (error) {
       console.error("Error completing signup:", error);
       toast.error("Network error. Please check your connection and try again.");

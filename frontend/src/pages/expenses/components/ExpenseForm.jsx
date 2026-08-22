@@ -99,7 +99,7 @@ function ExpenseForm({ members, onAddExpense }) {
               placeholder="0.00"
               value={price}
               onChange={(e) => {
-                if (/^\d*(\.\d{0,2})?$/.test(e.target.value)) {
+                if (/^(\d+(\.\d{0,2})?)?$/.test(e.target.value)) {
                   setPrice(e.target.value);
                 }
               }}

@@ -58,9 +58,12 @@ function Expenses() {
       if (response.ok) {
         const data = await response.json();
         setMembers(data);
+      } else {
+        toast.error("Failed to load room members");
       }
     } catch (error) {
       console.error("Error fetching room members:", error);
+      toast.error("Failed to load room members");
     }
   };
 
@@ -72,9 +75,12 @@ function Expenses() {
       if (response.ok) {
         const data = await response.json();
         setExpenses(data);
+      } else {
+        toast.error("Failed to load expenses");
       }
     } catch (error) {
       console.error("Error fetching expenses:", error);
+      toast.error("Failed to load expenses");
     }
   };
 

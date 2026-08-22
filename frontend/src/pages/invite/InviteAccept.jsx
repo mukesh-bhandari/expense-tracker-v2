@@ -1,4 +1,4 @@
-import { useEffect, useState, useContext } from "react";
+import { useEffect, useState, useContext, useRef, useCallback } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../contexts/AuthContext";
 import { toast } from "sonner";
@@ -11,11 +11,76 @@ function InviteAccept() {
   const { isAuthenticated, user } = useContext(AuthContext);
   const [status, setStatus] = useState("loading"); // loading, verifying, accepting, accepted, error, wrong-account, already-accepted
   const [error, setError] = useState("");
-  const [roomId, setRoomId] = useState(null);
+  const redirectTimerRef = useRef(null);
 
   const token = searchParams.get("token");
   const email = searchParams.get("email");
   const inviteRoomId = searchParams.get("roomId");
+
+  const verifyAndAcceptInvite = useCallback(async () => {
+    if (!token || !email) {
+      setStatus("error");
+      setError("Missing token or email in invite link");
+      return;
+    }
+
+    try {
+      setStatus("verifying");
+
+      // First verify the token
+      const verifyResponse = await fetch(
+        `/api/invite/verify-token?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}${inviteRoomId ? `&roomId=${inviteRoomId}` : ''}`,
+        { credentials: "include" }
+      );
+
+      if (!verifyResponse.ok) {
+        const data = await verifyResponse.json();
+        const msg = data.error || "Invalid invite link";
+        // Handle the "Invite already accepted" case as a special status
+        if (msg === "Invite already accepted") {
+          setStatus("already-accepted");
+        } else {
+          setStatus("error");
+          setError(msg);
+          toast.error(msg);
+        }
+        return;
+      }
+
+      const verifyData = await verifyResponse.json();
+
+      // Accept the invite (use the server-resolved roomId, not the URL param)
+      setStatus("accepting");
+      const acceptResponse = await fetch("/api/invite/accept-invite", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, email, roomId: verifyData.roomId }),
+      });
+
+      if (!acceptResponse.ok) {
+        const data = await acceptResponse.json();
+        setStatus("error");
+        const msg = data.error || "Failed to accept invite";
+        setError(msg);
+        toast.error(msg);
+        return;
+      }
+
+      setStatus("accepted");
+      toast.success("Invite accepted! Redirecting...");
+      // Redirect to room after 2 seconds
+      redirectTimerRef.current = setTimeout(() => {
+        navigate(`/${verifyData.roomId}/expenses`);
+      }, 2000);
+    } catch (err) {
+      console.error("Error during invite acceptance:", err);
+      setStatus("error");
+      const msg = "Network error. Please try again.";
+      setError(msg);
+      toast.error(msg);
+    }
+  }, [token, email, inviteRoomId, navigate]);
 
   useEffect(() => {
     if (isAuthenticated === null) {
@@ -62,7 +127,16 @@ function InviteAccept() {
     // User is authenticated and email matches (or email not yet available from user object)
     // Verify token
     verifyAndAcceptInvite();
-  }, [isAuthenticated, user, token, email, navigate]);
+  }, [isAuthenticated, user, token, email, inviteRoomId, navigate, verifyAndAcceptInvite]);
+
+  // Clear the redirect timer if the component unmounts before it fires
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -76,72 +150,6 @@ function InviteAccept() {
       console.error("Logout failed:", err);
       // Force reload anyway to clear cookies
       window.location.reload();
-    }
-  };
-
-  const verifyAndAcceptInvite = async () => {
-    if (!token || !email) {
-      setStatus("error");
-      setError("Missing token or email in invite link");
-      return;
-    }
-
-    try {
-      setStatus("verifying");
-
-      // First verify the token
-      const verifyResponse = await fetch(
-        `/api/invite/verify-token?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}${inviteRoomId ? `&roomId=${inviteRoomId}` : ''}`,
-        { credentials: "include" }
-      );
-
-      if (!verifyResponse.ok) {
-        const data = await verifyResponse.json();
-        const msg = data.error || "Invalid invite link";
-        // Handle the "Invite already accepted" case as a special status
-        if (msg === "Invite already accepted") {
-          setStatus("already-accepted");
-        } else {
-          setStatus("error");
-          setError(msg);
-          toast.error(msg);
-        }
-        return;
-      }
-
-      const verifyData = await verifyResponse.json();
-      setRoomId(verifyData.roomId);
-
-      // Accept the invite
-      setStatus("accepting");
-      const acceptResponse = await fetch("/api/invite/accept-invite", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token, email, roomId: inviteRoomId }),
-      });
-
-      if (!acceptResponse.ok) {
-        const data = await acceptResponse.json();
-        setStatus("error");
-        const msg = data.error || "Failed to accept invite";
-        setError(msg);
-        toast.error(msg);
-        return;
-      }
-
-      setStatus("accepted");
-      toast.success("Invite accepted! Redirecting...");
-      // Redirect to room after 2 seconds
-      setTimeout(() => {
-        navigate(`/${verifyData.roomId}/expenses`);
-      }, 2000);
-    } catch (err) {
-      console.error("Error during invite acceptance:", err);
-      setStatus("error");
-      const msg = "Network error. Please try again.";
-      setError(msg);
-      toast.error(msg);
     }
   };
 

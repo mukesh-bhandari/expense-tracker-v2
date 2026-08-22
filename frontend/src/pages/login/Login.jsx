@@ -36,18 +36,20 @@ function Login() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password, keepSignedIn }),
       });
-      const data = await response.json();
 
-      if (response.ok) {
-        // Update auth context immediately after successful login
-        setIsAuthenticated(true);
-        if (data.user) setUser(data.user);
-        toast.success("Welcome back!");
-        // Redirect to the stored URL or rooms if no redirect was provided
-        navigate(redirectUrl || "/rooms");
-      } else {
-        toast.error(data.message || "Login failed. Please try again.");
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.message || data.error || "Login failed. Please try again.");
+        return;
       }
+
+      const data = await response.json();
+      // Update auth context immediately after successful login
+      setIsAuthenticated(true);
+      if (data.user) setUser(data.user);
+      toast.success("Welcome back!");
+      // Redirect to the stored URL or rooms if no redirect was provided
+      navigate(redirectUrl || "/rooms");
     } catch (error) {
       console.error("Error logging in:", error);
       toast.error("Network error. Please check your connection and try again.");

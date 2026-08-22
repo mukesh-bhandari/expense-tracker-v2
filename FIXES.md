@@ -176,18 +176,32 @@
 - `ExpenseList.jsx`: accepts `isDirty`/`onSaved`/`onExpensesPersisted`; shows an "Unsaved changes" badge; delete now uses `onExpensesPersisted` (it's server-persisted, so it doesn't mark dirty).
 - Bonus (same stale-closure class): `handleAddExpense` → functional updater.
 
-## Phase 7 — Frontend Robustness & UX ⏳ PLANNED
+## Phase 7 — Frontend Robustness & UX ✅ DONE
 
-| Bug | Fix |
-|-----|-----|
-| F02 | Check `response.ok` before `response.json()` (Login, Signup ×3, ForgotPassword ×3) |
-| F08 | `credentials: "include"` on OTP signup calls |
-| F09 | Clear the redirect `setTimeout` on unmount |
-| F10 | Add `inviteRoomId` to useEffect dependency array |
-| F11 | Reject `"."` and values starting with `"."` in price regex |
-| F12 | Error toasts when fetching room members/expenses fails |
-| F13 | Use server-returned `roomId` from verifyData instead of URL param |
-| F14 | Disable backdrop click while delete is in flight |
+### F02 — `response.json()` before checking `response.ok` ✅ FIXED
+- Remaining spots fixed: `Login.jsx` (1), `Signup.jsx` (3: send-code, verify-code, signup), `ForgotPassword.jsx` (3: send-code, verify-code, reset-password). Now check `ok` first; on error, `await response.json().catch(() => ({}))` and read `data.message || data.error`.
+- (`Room.jsx` + `InviteAccept.jsx` were already fixed on the `bug-fix` branch.)
+
+### F08 — Missing `credentials: "include"` on OTP calls ✅ FIXED
+- Added to `Signup.jsx` (send-code, verify-code, resend) and `ForgotPassword.jsx` (send-code, verify-code, resend) for consistency.
+
+### F09 — `setTimeout` not cleaned up ✅ FIXED
+- `InviteAccept.jsx`: redirect timer stored in `redirectTimerRef`; cleared in an unmount `useEffect`.
+
+### F10 — Missing `useEffect` dependency ✅ FIXED
+- `InviteAccept.jsx`: added `inviteRoomId` to deps; wrapped `verifyAndAcceptInvite` in `useCallback` and added it to deps (resolves the full `exhaustive-deps` warning).
+
+### F11 — Price regex accepts `"."` ✅ FIXED
+- `ExpenseForm.jsx`: regex `/^\d*(\.\d{0,2})?$/` → `/^(\d+(\.\d{0,2})?)?$/` (rejects `"."` and `".5"`).
+
+### F12 — No error toast on fetch failure ✅ FIXED
+- `Expenses.jsx`: `fetchRoomMembers`/`fetchExpenses` now `toast.error(...)` on non-`ok` and on caught errors.
+
+### F13 — Inconsistent `roomId` sent to server ✅ FIXED
+- `InviteAccept.jsx`: `accept-invite` now sends `roomId: verifyData.roomId` (server-resolved) instead of the URL param; removed the unused `roomId` state.
+
+### F14 — Backdrop clickable during active delete ✅ FIXED
+- `ConfirmDeleteDialog.jsx`: backdrop `onClick` disabled while `isLoading`.
 
 ## Phase 8 — Polish & Config ⏳ PLANNED
 
