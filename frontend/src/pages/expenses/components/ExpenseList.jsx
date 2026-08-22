@@ -13,7 +13,10 @@ import { toast } from "sonner";
 
 function ExpenseList({
   expenses = [],
+  isDirty = false,
   onExpensesUpdate,
+  onExpensesPersisted,
+  onSaved,
   onOpenBalanceSheet,
   onOpenEditModal,
 }) {
@@ -146,7 +149,7 @@ function ExpenseList({
 
       if (response.ok) {
         const updatedExpenses = expenses.filter((exp) => exp.id !== expense.id);
-        onExpensesUpdate(updatedExpenses);
+        onExpensesPersisted(updatedExpenses);
         closeDeleteDialog();
       } else {
         toast.error("Failed to delete expense");
@@ -189,6 +192,7 @@ function ExpenseList({
 
       if (response.ok) {
         toast.success("Changes saved successfully");
+        onSaved();
       }
     } catch (error) {
       console.error("Error saving states:", error);
@@ -216,6 +220,11 @@ function ExpenseList({
                 <FontAwesomeIcon icon={faUser} className="text-warning" />
                 View Balances
               </button>
+              {isDirty && (
+                <span className="px-2 py-1 text-xs font-semibold text-warning bg-warning/10 border border-warning/20 rounded-md">
+                  Unsaved changes
+                </span>
+              )}
               <button
                 onClick={handleSaveButton}
                 disabled={isSaving}

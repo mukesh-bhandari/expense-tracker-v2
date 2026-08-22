@@ -153,16 +153,28 @@
 ### B16 — No CSRF protection ✅ FIXED (done in Phase 2)
 - Covered by the `sameSite: "strict"` cookie change — no Phase 5 work needed.
 
-## Phase 6 — Frontend Data Integrity ⏳ PLANNED
+## Phase 6 — Frontend Data Integrity ✅ DONE
 
-| Bug | Fix |
-|-----|-----|
-| F01 | Populate `user` after login/signup (return safe user object, call `setUser`) |
-| F03 | Functional updater for `setRooms` in `Room.jsx` |
-| F04 | Stabilize `EditModal` useEffect deps (stringify splits / init flag) |
-| F05 | Functional updater in `handleSaveExpenseAmounts` |
-| F06 | Functional updater in `handleTransactionComplete` |
-| F07 | Dirty-state flag + `beforeunload` + navigation guard |
+### F01 — `user` state never populated after login/signup ✅ FIXED
+- Backend `authRoute.js`: `login` + `signup` now return `user: { id, username, email }` (password never exposed).
+- Frontend `Login.jsx` + `Signup.jsx`: destructure `setUser` from AuthContext and call it with `data.user`. Also fixes `InviteAccept.jsx`'s wrong-account check.
+
+### F03 — Stale closure in room creation ✅ FIXED
+- `Room.jsx`: `setRooms((prev) => [...prev, data.data])`.
+
+### F04 — EditModal rows reset on parent re-render ✅ FIXED
+- `EditModal.jsx`: replaced the init `useEffect` (deps on `expense`/`members` object identity) with a lazy `useState(() => buildInitialRows(...))`. The modal mounts fresh each open, so rows initialize exactly once.
+
+### F05 — Stale closure in `handleSaveExpenseAmounts` ✅ FIXED
+- `Expenses.jsx`: `setExpenses((prev) => prev.map(...))`.
+
+### F06 — Stale closure in `handleTransactionComplete` ✅ FIXED
+- `Expenses.jsx`: functional updater; `netTransactions` now derived via a `useEffect` on `[expenses, isBalanceSheetOpen]` (also live-updates the sheet).
+
+### F07 — Local-only mutations silently lost on navigation ✅ FIXED
+- `Expenses.jsx`: `isDirty` flag set by skip/paid toggles and balance-sheet "Mark Paid"; cleared on "Save Changes" success. Added `beforeunload` listener and `useBlocker(isDirty)` (react-router v7) rendering a new `src/components/UnsavedChangesDialog.jsx` (Leave/Stay).
+- `ExpenseList.jsx`: accepts `isDirty`/`onSaved`/`onExpensesPersisted`; shows an "Unsaved changes" badge; delete now uses `onExpensesPersisted` (it's server-persisted, so it doesn't mark dirty).
+- Bonus (same stale-closure class): `handleAddExpense` → functional updater.
 
 ## Phase 7 — Frontend Robustness & UX ⏳ PLANNED
 

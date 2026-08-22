@@ -60,7 +60,7 @@ function WelcomePage() {
 
       if (response.ok) {
         const data = await response.json();
-        setRooms([...rooms, data.data]);
+        setRooms((prev) => [...prev, data.data]);
         setRoomName("");
         setShowCreateDialog(false);
         toast.success("Room created successfully!");

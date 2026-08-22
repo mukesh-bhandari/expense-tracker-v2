@@ -5,8 +5,9 @@ import ExpenseList from "./components/ExpenseList.jsx";
 import BalanceSheet from "./components/BalanceSheet.jsx";
 import ExpenseEditModal from "./components/EditModal.jsx";
 import ExpenseForm from "./components/ExpenseForm.jsx";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useBlocker } from "react-router-dom";
 import { calculateTransactionsFromExpenses } from "./utils/expenseUtils.js";
+import UnsavedChangesDialog from "../../components/UnsavedChangesDialog.jsx";
 import { toast } from "sonner";
 
 function Expenses() {
@@ -19,6 +20,9 @@ function Expenses() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [initialSkipUserId, setInitialSkipUserId] = useState(null);
+  const [isDirty, setIsDirty] = useState(false);
+
+  const blocker = useBlocker(isDirty);
 
   useEffect(() => {
     if (roomId) {
@@ -26,6 +30,25 @@ function Expenses() {
       fetchExpenses();
     }
   }, [roomId]);
+
+  // Warn before closing/reloading the tab with unsaved changes
+  useEffect(() => {
+    const handler = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  // Recompute balances whenever expenses change while the sheet is open
+  useEffect(() => {
+    if (isBalanceSheetOpen) {
+      setNetTransactions(calculateTransactionsFromExpenses(expenses));
+    }
+  }, [expenses, isBalanceSheetOpen]);
 
   const fetchRoomMembers = async () => {
     try {
@@ -105,12 +128,13 @@ function Expenses() {
       });
 
       if (response.ok) {
-        const updatedExpenses = expenses.map((exp) =>
-          exp.id === expenseId
-            ? { ...exp, splits: updatedSplits, transaction_complete: allCompleted }
-            : exp
+        setExpenses((prev) =>
+          prev.map((exp) =>
+            exp.id === expenseId
+              ? { ...exp, splits: updatedSplits, transaction_complete: allCompleted }
+              : exp
+          )
         );
-        setExpenses(updatedExpenses);
         handleCloseEditModal();
         toast.success("Expense updated");
       } else {
@@ -125,42 +149,53 @@ function Expenses() {
   const handleTransactionComplete = (transactionPair) => {
     const [from, to] = transactionPair;
 
-    const updatedExpenses = expenses.map((expense) => {
-      const updatedSplits = expense.splits.map((split) => {
-        if (
-          expense.paid_by_username === to &&
-          split.user_username === from &&
-          split.is_paid === false
-        ) {
-          return { ...split, is_paid: true };
-        }
+    setExpenses((prev) =>
+      prev.map((expense) => {
+        const updatedSplits = expense.splits.map((split) => {
+          if (
+            expense.paid_by_username === to &&
+            split.user_username === from &&
+            split.is_paid === false
+          ) {
+            return { ...split, is_paid: true };
+          }
 
-        if (
-          expense.paid_by_username === from &&
-          split.user_username === to &&
-          split.is_paid === false
-        ) {
-          return { ...split, is_paid: true };
-        }
+          if (
+            expense.paid_by_username === from &&
+            split.user_username === to &&
+            split.is_paid === false
+          ) {
+            return { ...split, is_paid: true };
+          }
 
-        return split;
-      });
+          return split;
+        });
 
-      return { ...expense, splits: updatedSplits };
-    });
+        return { ...expense, splits: updatedSplits };
+      })
+    );
 
-    setExpenses(updatedExpenses);
-    
-    const newTransactions = calculateTransactionsFromExpenses(updatedExpenses);
-    setNetTransactions(newTransactions);
+    setIsDirty(true);
   };
 
   const handleAddExpense = (newExpense) => {
-    setExpenses([...expenses, newExpense]);
+    setExpenses((prev) => [...prev, newExpense]);
   };
 
+  // Local-only mutations (skip toggle / mark-paid checkbox) -> unsaved
   const handleExpensesUpdate = (updatedExpenses) => {
     setExpenses(updatedExpenses);
+    setIsDirty(true);
+  };
+
+  // Server-persisted mutations (delete) -> update state without marking dirty
+  const handleExpensesPersisted = (updatedExpenses) => {
+    setExpenses(updatedExpenses);
+  };
+
+  // "Save Changes" success -> clear the dirty flag
+  const handleSaved = () => {
+    setIsDirty(false);
   };
 
   return (
@@ -209,7 +244,10 @@ function Expenses() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <ExpenseList
             expenses={expenses}
+            isDirty={isDirty}
             onExpensesUpdate={handleExpensesUpdate}
+            onExpensesPersisted={handleExpensesPersisted}
+            onSaved={handleSaved}
             onOpenBalanceSheet={handleOpenBalanceSheet}
             onOpenEditModal={handleOpenEditModal}
           />
@@ -229,6 +267,13 @@ function Expenses() {
               onClose={handleCloseEditModal}
               onSave={handleSaveExpenseAmounts}
               initialSkipUserId={initialSkipUserId}
+            />
+          )}
+
+          {blocker.state === "blocked" && (
+            <UnsavedChangesDialog
+              onLeave={() => blocker.proceed()}
+              onStay={() => blocker.reset()}
             />
           )}
         </div>

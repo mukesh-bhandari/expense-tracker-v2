@@ -19,7 +19,7 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setIsAuthenticated } = useContext(AuthContext);
+  const { setIsAuthenticated, setUser } = useContext(AuthContext);
   
   // Get redirect URL from search params
   const encodedRedirect = searchParams.get("redirect");
@@ -41,6 +41,7 @@ function Login() {
       if (response.ok) {
         // Update auth context immediately after successful login
         setIsAuthenticated(true);
+        if (data.user) setUser(data.user);
         toast.success("Welcome back!");
         // Redirect to the stored URL or rooms if no redirect was provided
         navigate(redirectUrl || "/rooms");

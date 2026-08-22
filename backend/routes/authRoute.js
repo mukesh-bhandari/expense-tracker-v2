@@ -229,7 +229,10 @@ router.post("/signup", async (req, res) => {
     );
     res.cookie("accessToken", accessToken, accessTokenOptions);
     res.cookie("refreshToken", refreshToken, refreshTokenOptions);
-    return res.json({ message: "Signup Successfull" });
+    return res.json({
+      message: "Signup Successfull",
+      user: { id: user.id, username: user.username, email: user.gmail },
+    });
   } catch (error) {
     serverError(res, error, "Server error");
   }
@@ -279,7 +282,10 @@ router.post("/login", loginLimiter, async (req, res) => {
       res.cookie("accessToken", accessToken, accessTokenOptions);
       res.cookie("refreshToken", refreshToken, refreshTokenOptions);
 
-      res.json({ message: "Login Successfull" });
+      res.json({
+        message: "Login Successfull",
+        user: { id: user.id, username: user.username, email: user.gmail },
+      });
     }
   } catch (error) {
     serverError(res, error, "Error logging in");

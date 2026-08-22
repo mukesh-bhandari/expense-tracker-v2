@@ -38,7 +38,7 @@ function Signup() {
   
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { setIsAuthenticated } = useContext(AuthContext);
+  const { setIsAuthenticated, setUser } = useContext(AuthContext);
   const otpRefs = useRef([]);
   const inviteEmail = searchParams.get("email") || "";
   const skipVerification = searchParams.get("skipVerification") === "true";
@@ -225,6 +225,7 @@ function Signup() {
       if (response.ok) {
         // Signup successful = already authenticated with correct credentials
         setIsAuthenticated(true);
+        if (data.user) setUser(data.user);
         toast.success("Account created successfully!");
         // Redirect to the stored URL or dashboard if no redirect was provided
         navigate(redirectUrl || "/rooms");

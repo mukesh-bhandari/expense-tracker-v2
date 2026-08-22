@@ -1,50 +1,50 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEdit } from "@fortawesome/free-solid-svg-icons";
 
-function ExpenseEditModal({ expense, members, onClose, onSave, initialSkipUserId = null }) {
-  const [rows, setRows] = useState([]);
-  const [isSaving, setIsSaving] = useState(false);
+function buildInitialRows(expense, members, initialSkipUserId) {
+  const splitsMap = {};
+  expense.splits.forEach((split) => {
+    splitsMap[split.user_id] = split;
+  });
 
-  useEffect(() => {
-    const splitsMap = {};
-    expense.splits.forEach((split) => {
-      splitsMap[split.user_id] = split;
-    });
-
-    const initialized = members.map((member) => {
-      const split = splitsMap[member.id];
-      if (split) {
-        const amountVal = parseFloat(split.amount_owed);
-        return {
-          userId: member.id,
-          username: member.username,
-          amount: String(amountVal),
-          skipped: amountVal === 0,
-        };
-      }
+  const initialized = members.map((member) => {
+    const split = splitsMap[member.id];
+    if (split) {
+      const amountVal = parseFloat(split.amount_owed);
       return {
         userId: member.id,
         username: member.username,
-        amount: "0",
-        skipped: true,
+        amount: String(amountVal),
+        skipped: amountVal === 0,
       };
-    });
+    }
+    return {
+      userId: member.id,
+      username: member.username,
+      amount: "0",
+      skipped: true,
+    };
+  });
 
-    if (initialSkipUserId) {
-      const idx = initialized.findIndex((r) => r.userId === initialSkipUserId);
-      if (idx !== -1) {
-        const wasSkipped = initialized[idx].skipped;
-        if (wasSkipped) {
-          initialized[idx] = { ...initialized[idx], skipped: false, amount: "0" };
-        } else {
-          initialized[idx] = { ...initialized[idx], skipped: true, amount: "0" };
-        }
+  if (initialSkipUserId) {
+    const idx = initialized.findIndex((r) => r.userId === initialSkipUserId);
+    if (idx !== -1) {
+      const wasSkipped = initialized[idx].skipped;
+      if (wasSkipped) {
+        initialized[idx] = { ...initialized[idx], skipped: false, amount: "0" };
+      } else {
+        initialized[idx] = { ...initialized[idx], skipped: true, amount: "0" };
       }
     }
+  }
 
-    setRows(initialized);
-  }, [expense, members, initialSkipUserId]);
+  return initialized;
+}
+
+function ExpenseEditModal({ expense, members, onClose, onSave, initialSkipUserId = null }) {
+  const [rows, setRows] = useState(() => buildInitialRows(expense, members, initialSkipUserId));
+  const [isSaving, setIsSaving] = useState(false);
 
   const totalAllocated = rows.reduce(
     (sum, row) => sum + (parseFloat(row.amount) || 0),
