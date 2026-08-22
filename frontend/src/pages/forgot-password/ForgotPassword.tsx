@@ -1,222 +1,184 @@
-import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { toast } from "sonner";
+import { useState, useRef, useEffect, type ClipboardEvent, type FormEvent, type KeyboardEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import {
-  faLock,
-  faEye,
-  faEyeSlash,
-  faEnvelope,
-  faShieldAlt,
-  faArrowLeft,
-  faClock,
-  faKey,
-} from "@fortawesome/free-solid-svg-icons";
+  Lock,
+  Eye,
+  EyeOff,
+  Mail,
+  ShieldCheck,
+  ArrowLeft,
+  Clock,
+  KeyRound,
+} from 'lucide-react'
+import { sendCode, verifyCode, resetPassword } from '../../api/auth'
 
 function ForgotPassword() {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [email, setEmail] = useState("");
-  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [canResendOtp, setCanResendOtp] = useState(false);
-  const [resendTimer, setResendTimer] = useState(60);
+  const [currentStep, setCurrentStep] = useState(1)
+  const [email, setEmail] = useState('')
+  const [otp, setOtp] = useState<string[]>(['', '', '', '', '', ''])
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [canResendOtp, setCanResendOtp] = useState(false)
+  const [resendTimer, setResendTimer] = useState(60)
 
-  const navigate = useNavigate();
-  const otpRefs = useRef([]);
+  const navigate = useNavigate()
+  const otpRefs = useRef<(HTMLInputElement | null)[]>([])
 
   // Timer for resend OTP
   useEffect(() => {
     if (currentStep === 2 && resendTimer > 0) {
       const timer = setTimeout(() => {
-        setResendTimer(resendTimer - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
+        setResendTimer(resendTimer - 1)
+      }, 1000)
+      return () => clearTimeout(timer)
     } else if (resendTimer === 0) {
-      setCanResendOtp(true);
+      setCanResendOtp(true)
     }
-  }, [currentStep, resendTimer]);
+  }, [currentStep, resendTimer])
 
   // Step 1: Send reset code to email
-  const handleEmailSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleEmailSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
 
-    if (!email.includes("@gmail.com")) {
-      toast.error("Please enter a valid Gmail address.");
-      setIsLoading(false);
-      return;
+    if (!email.includes('@gmail.com')) {
+      toast.error('Please enter a valid Gmail address.')
+      setIsLoading(false)
+      return
     }
 
     try {
-      const response = await fetch("/api/auth/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose: "password_reset" }),
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        setCurrentStep(2);
-        setResendTimer(60);
-        setCanResendOtp(false);
-        toast.success("Reset code sent to your email");
-      } else {
-        toast.error(data.message || "Failed to send reset code. Please try again.");
-      }
+      await sendCode({ email, purpose: 'password_reset' })
+      setCurrentStep(2)
+      setResendTimer(60)
+      setCanResendOtp(false)
+      toast.success('Reset code sent to your email')
     } catch (error) {
-      console.error("Error sending reset code:", error);
-      toast.error("Network error. Please check your connection and try again.");
+      console.error('Error sending reset code:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to send reset code. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Handle OTP input
-  const handleOtpChange = (index, value) => {
+  const handleOtpChange = (index: number, value: string) => {
     if (value.length <= 1 && /^\d*$/.test(value)) {
-      const newOtp = [...otp];
-      newOtp[index] = value;
-      setOtp(newOtp);
+      const newOtp = [...otp]
+      newOtp[index] = value
+      setOtp(newOtp)
 
       if (value && index < 5) {
-        otpRefs.current[index + 1]?.focus();
+        otpRefs.current[index + 1]?.focus()
       }
     }
-  };
+  }
 
   // Handle OTP backspace
-  const handleOtpKeyDown = (index, e) => {
-    if (e.key === "Backspace" && !otp[index] && index > 0) {
-      otpRefs.current[index - 1]?.focus();
+  const handleOtpKeyDown = (index: number, e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      otpRefs.current[index - 1]?.focus()
     }
-  };
+  }
 
   // Handle OTP paste
-  const handleOtpPaste = (e) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
-    if (!pasted) return;
+  const handleOtpPaste = (e: ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault()
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (!pasted) return
 
-    const newOtp = [...otp];
+    const newOtp = [...otp]
     for (let i = 0; i < pasted.length && i < 6; i++) {
-      newOtp[i] = pasted[i];
+      newOtp[i] = pasted[i]
     }
-    setOtp(newOtp);
+    setOtp(newOtp)
 
-    const nextIndex = Math.min(pasted.length, 5);
-    otpRefs.current[nextIndex]?.focus();
-  };
+    const nextIndex = Math.min(pasted.length, 5)
+    otpRefs.current[nextIndex]?.focus()
+  }
 
   // Step 2: Verify OTP
-  const handleOtpSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handleOtpSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
 
-    const otpCode = otp.join("");
+    const otpCode = otp.join('')
     if (otpCode.length !== 6) {
-      toast.error("Please enter the complete 6-digit code.");
-      setIsLoading(false);
-      return;
+      toast.error('Please enter the complete 6-digit code.')
+      setIsLoading(false)
+      return
     }
 
     try {
-      const response = await fetch("/api/auth/verify-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: otpCode, purpose: "password_reset" }),
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        setCurrentStep(3);
-        toast.success("Code verified successfully");
-      } else {
-        toast.error(data.error || "Invalid code. Please try again.");
-      }
+      await verifyCode({ email, code: otpCode, purpose: 'password_reset' })
+      setCurrentStep(3)
+      toast.success('Code verified successfully')
     } catch (error) {
-      console.error("Error verifying code:", error);
-      toast.error("Network error. Please check your connection and try again.");
+      console.error('Error verifying code:', error)
+      toast.error(error instanceof Error ? error.message : 'Invalid code. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Resend OTP
   const handleResendOtp = async () => {
-    setIsLoading(true);
+    setIsLoading(true)
 
     try {
-      const response = await fetch("/api/auth/send-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose: "password_reset" }),
-      });
-
-      if (response.ok) {
-        setOtp(["", "", "", "", "", ""]);
-        setResendTimer(60);
-        setCanResendOtp(false);
-        otpRefs.current[0]?.focus();
-        toast.success("New reset code sent");
-      } else {
-        toast.error("Failed to resend code. Please try again.");
-      }
-    } catch {
-      toast.error("Network error. Please try again.");
+      await sendCode({ email, purpose: 'password_reset' })
+      setOtp(['', '', '', '', '', ''])
+      setResendTimer(60)
+      setCanResendOtp(false)
+      otpRefs.current[0]?.focus()
+      toast.success('New reset code sent')
+    } catch (error) {
+      console.error('Error resending code:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to resend code. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Step 3: Reset password
-  const handlePasswordReset = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
+  const handlePasswordReset = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    setIsLoading(true)
 
     if (newPassword !== confirmPassword) {
-      toast.error("Passwords do not match.");
-      setIsLoading(false);
-      return;
+      toast.error('Passwords do not match.')
+      setIsLoading(false)
+      return
     }
 
     if (newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters.");
-      setIsLoading(false);
-      return;
+      toast.error('Password must be at least 8 characters.')
+      setIsLoading(false)
+      return
     }
 
     try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code: otp.join(""), newPassword }),
-      });
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success("Password reset successful! Please log in.");
-        navigate("/login");
-      } else {
-        toast.error(data.error || "Failed to reset password. Please try again.");
-      }
+      await resetPassword({ email, code: otp.join(''), newPassword })
+      toast.success('Password reset successful! Please log in.')
+      navigate('/login')
     } catch (error) {
-      console.error("Error resetting password:", error);
-      toast.error("Network error. Please check your connection and try again.");
+      console.error('Error resetting password:', error)
+      toast.error(error instanceof Error ? error.message : 'Failed to reset password. Please try again.')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   // Go back to previous step
   const goBack = () => {
     if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+      setCurrentStep(currentStep - 1)
     }
-  };
+  }
 
   // Render step content
   const renderStepContent = () => {
@@ -230,7 +192,7 @@ function ForgotPassword() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faEnvelope} className="text-muted-foreground text-sm" />
+                  <Mail className="text-muted-foreground" size={14} />
                 </div>
                 <input
                   id="email"
@@ -260,13 +222,13 @@ function ForgotPassword() {
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  <FontAwesomeIcon icon={faEnvelope} />
+                  <Mail size={14} />
                   Send Reset Code
                 </span>
               )}
             </button>
           </form>
-        );
+        )
 
       case 2:
         return (
@@ -279,10 +241,12 @@ function ForgotPassword() {
                 {otp.map((digit, index) => (
                   <input
                     key={index}
-                    ref={(el) => (otpRefs.current[index] = el)}
+                    ref={(el) => {
+                      otpRefs.current[index] = el
+                    }}
                     type="text"
                     inputMode="numeric"
-                    maxLength="1"
+                    maxLength={1}
                     value={digit}
                     onChange={(e) => handleOtpChange(index, e.target.value)}
                     onKeyDown={(e) => handleOtpKeyDown(index, e)}
@@ -297,7 +261,7 @@ function ForgotPassword() {
             <div className="text-center space-y-3">
               {!canResendOtp ? (
                 <p className="text-sm text-muted-foreground flex items-center justify-center gap-2">
-                  <FontAwesomeIcon icon={faClock} className="text-xs" />
+                  <Clock className="text-xs" size={12} />
                   Resend code in {resendTimer}s
                 </p>
               ) : (
@@ -314,7 +278,7 @@ function ForgotPassword() {
 
             <button
               type="submit"
-              disabled={isLoading || otp.some(digit => !digit)}
+              disabled={isLoading || otp.some((digit) => !digit)}
               className="btn-primary-expense w-full cursor-pointer py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
@@ -327,13 +291,13 @@ function ForgotPassword() {
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  <FontAwesomeIcon icon={faShieldAlt} />
+                  <ShieldCheck size={14} />
                   Verify Code
                 </span>
               )}
             </button>
           </form>
-        );
+        )
 
       case 3:
         return (
@@ -344,11 +308,11 @@ function ForgotPassword() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faLock} className="text-muted-foreground text-sm" />
+                  <Lock className="text-muted-foreground" size={14} />
                 </div>
                 <input
                   id="newPassword"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="Enter new password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
@@ -362,10 +326,11 @@ function ForgotPassword() {
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
                 >
-                  <FontAwesomeIcon
-                    icon={showPassword ? faEyeSlash : faEye}
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200"
-                  />
+                  {showPassword ? (
+                    <EyeOff className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" size={14} />
+                  ) : (
+                    <Eye className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" size={14} />
+                  )}
                 </button>
               </div>
             </div>
@@ -376,11 +341,11 @@ function ForgotPassword() {
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <FontAwesomeIcon icon={faLock} className="text-muted-foreground text-sm" />
+                  <Lock className="text-muted-foreground" size={14} />
                 </div>
                 <input
                   id="confirmPassword"
-                  type={showConfirmPassword ? "text" : "password"}
+                  type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Confirm new password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
@@ -394,10 +359,11 @@ function ForgotPassword() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   disabled={isLoading}
                 >
-                  <FontAwesomeIcon
-                    icon={showConfirmPassword ? faEyeSlash : faEye}
-                    className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200"
-                  />
+                  {showConfirmPassword ? (
+                    <EyeOff className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" size={14} />
+                  ) : (
+                    <Eye className="text-muted-foreground hover:text-foreground text-sm transition-colors duration-200" size={14} />
+                  )}
                 </button>
               </div>
             </div>
@@ -417,43 +383,43 @@ function ForgotPassword() {
                 </span>
               ) : (
                 <span className="flex items-center justify-center gap-2">
-                  <FontAwesomeIcon icon={faKey} />
+                  <KeyRound size={14} />
                   Reset Password
                 </span>
               )}
             </button>
           </form>
-        );
+        )
 
       default:
-        return null;
+        return null
     }
-  };
+  }
 
   // Get step title and description
   const getStepInfo = () => {
     switch (currentStep) {
       case 1:
         return {
-          title: "Forgot Password",
-          description: "Enter your email to receive a reset code"
-        };
+          title: 'Forgot Password',
+          description: 'Enter your email to receive a reset code',
+        }
       case 2:
         return {
-          title: "Verify Code",
-          description: "Enter the code sent to your email"
-        };
+          title: 'Verify Code',
+          description: 'Enter the code sent to your email',
+        }
       case 3:
         return {
-          title: "New Password",
-          description: "Choose a new password for your account"
-        };
+          title: 'New Password',
+          description: 'Choose a new password for your account',
+        }
       default:
-        return { title: "", description: "" };
+        return { title: '', description: '' }
     }
-  };
+  }
 
-  const { title, description } = getStepInfo();
+  const { title, description } = getStepInfo()
 
   return (
     <div className="min-h-screen page-shell flex items-center justify-center px-4 py-12">
@@ -461,7 +427,7 @@ function ForgotPassword() {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md">
-            <FontAwesomeIcon icon={faKey} className="text-primary-foreground text-2xl" />
+            <KeyRound className="text-primary-foreground" size={24} />
           </div>
           <h1 className="text-3xl font-bold text-foreground mb-2">{title}</h1>
           <p className="text-muted-foreground">{description}</p>
@@ -469,37 +435,37 @@ function ForgotPassword() {
 
         {/* Forgot Password Form */}
         <div className="expense-form p-8">
-        {/* Back Button */}
-        {currentStep > 1 && (
-          <button
-            onClick={goBack}
-            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 mb-6"
-          >
-            <FontAwesomeIcon icon={faArrowLeft} className="text-xs" />
-            Back
-          </button>
-        )}
-
-        {/* Step Content */}
-        {renderStepContent()}
-
-        {/* Footer */}
-        <div className="mt-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            Remember your password?{" "}
+          {/* Back Button */}
+          {currentStep > 1 && (
             <button
-              onClick={() => navigate("/login")}
-              type="button"
-              className="text-primary hover:text-primary/80 font-medium transition-colors duration-200"
+              onClick={goBack}
+              className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 mb-6"
             >
-              Sign in
+              <ArrowLeft className="text-xs" size={12} />
+              Back
             </button>
-          </p>
-        </div>
+          )}
+
+          {/* Step Content */}
+          {renderStepContent()}
+
+          {/* Footer */}
+          <div className="mt-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Remember your password?{' '}
+              <button
+                onClick={() => navigate('/login')}
+                type="button"
+                className="text-primary hover:text-primary/80 font-medium transition-colors duration-200"
+              >
+                Sign in
+              </button>
+            </p>
+          </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
-export default ForgotPassword;
+export default ForgotPassword

@@ -1,25 +1,29 @@
-import React from "react";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faUser } from "@fortawesome/free-solid-svg-icons";
+import { User } from 'lucide-react'
+import type { NetTransactions } from '../../../types'
 
-function BalanceSheet({ 
-  netTransactions,   
-  onClose,           
-  onTransactionComplete 
-}) {
+interface BalanceSheetProps {
+  netTransactions: NetTransactions
+  onClose: () => void
+  onTransactionComplete: (pair: [string, string]) => void
+}
 
+function BalanceSheet({
+  netTransactions,
+  onClose,
+  onTransactionComplete,
+}: BalanceSheetProps) {
   return (
     <>
-      <div 
+      <div
         className="fixed inset-0 modal-backdrop z-40 duration-300"
         onClick={onClose}
       />
-      
+
       <div className="fixed top-0 right-0 h-full w-full max-w-md bg-card border-l border-border z-50 transform transition-transform duration-300 ease-out translate-x-0">
         <div className="flex flex-col h-full">
           <div className="flex items-center justify-between p-6 border-b border-border">
             <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
-              <FontAwesomeIcon icon={faUser} className="text-warning" />
+              <User className="text-warning" size={18} />
               Outstanding Balances
             </h3>
             <button
@@ -31,19 +35,19 @@ function BalanceSheet({
               </svg>
             </button>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto">
             {Object.entries(netTransactions).length > 0 ? (
               <div className="space-y-0">
                 {Object.entries(netTransactions).map(([key, amount]) => {
-                  const [from, to] = key.split("->");
-                  
+                  const [from, to] = key.split('->')
+
                   return (
                     <div key={key} className="bg-card border-b border-border-light p-4 last:border-b-0">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-primary-light flex items-center justify-center">
-                            <FontAwesomeIcon icon={faUser} className="text-primary text-sm" />
+                            <User className="text-primary" size={14} />
                           </div>
                           <div>
                             <p className="text-sm text-muted-foreground">
@@ -55,7 +59,7 @@ function BalanceSheet({
                             </p>
                           </div>
                         </div>
-                        
+
                         <button
                           className="btn-primary-expense px-3 py-1.5 text-xs font-medium"
                           onClick={() => onTransactionComplete([from, to])}
@@ -64,7 +68,7 @@ function BalanceSheet({
                         </button>
                       </div>
                     </div>
-                  );
+                  )
                 })}
               </div>
             ) : (
@@ -76,7 +80,7 @@ function BalanceSheet({
         </div>
       </div>
     </>
-  );
+  )
 }
 
-export default BalanceSheet;
+export default BalanceSheet

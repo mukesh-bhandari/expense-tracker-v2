@@ -1,120 +1,89 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faPlus, faUserPlus, faSpinner, faUsers, faChevronRight } from "@fortawesome/free-solid-svg-icons";
+import { useState, useEffect, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
+import { Plus, UserPlus, LoaderCircle, Users, ChevronRight } from 'lucide-react'
+import { getMyRooms, createRoom } from '../../api/rooms'
+import { sendInvite } from '../../api/invite'
+import type { Room } from '../../types'
 
 function WelcomePage() {
-  const [rooms, setRooms] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showInviteDialog, setShowInviteDialog] = useState(false);
-  const [selectedRoomId, setSelectedRoomId] = useState(null);
-  const [roomName, setRoomName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
-  const [isInviting, setIsInviting] = useState(false);
-  const navigate = useNavigate();
+  const [rooms, setRooms] = useState<Room[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [showInviteDialog, setShowInviteDialog] = useState(false)
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null)
+  const [roomName, setRoomName] = useState('')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [isCreating, setIsCreating] = useState(false)
+  const [isInviting, setIsInviting] = useState(false)
+  const navigate = useNavigate()
 
   // Fetch user's rooms on mount
   useEffect(() => {
-    fetchRooms();
-  }, []);
+    fetchRooms()
+  }, [])
 
   const fetchRooms = async () => {
     try {
-      setLoading(true);
-      const response = await fetch("/api/rooms/my-rooms", {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setRooms(data);
-      } else {
-        toast.error("Failed to load rooms. Please try again.");
-      }
+      setLoading(true)
+      const data = await getMyRooms()
+      setRooms(data)
     } catch (err) {
-      console.error("Error fetching rooms:", err);
-      toast.error("Network error. Please check your connection.");
+      console.error('Error fetching rooms:', err)
+      toast.error('Failed to load rooms. Please try again.')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  const handleCreateRoom = async (e) => {
-    e.preventDefault();
+  const handleCreateRoom = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     if (!roomName.trim()) {
-      toast.error("Room name cannot be empty");
-      return;
+      toast.error('Room name cannot be empty')
+      return
     }
 
-    setIsCreating(true);
+    setIsCreating(true)
 
     try {
-      const response = await fetch("/api/rooms/create-room", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: roomName }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setRooms([...rooms, data.data]);
-        setRoomName("");
-        setShowCreateDialog(false);
-        toast.success("Room created successfully!");
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || "Failed to create room.");
-      }
+      const data = await createRoom(roomName)
+      setRooms([...rooms, data.data])
+      setRoomName('')
+      setShowCreateDialog(false)
+      toast.success('Room created successfully!')
     } catch (err) {
-      console.error("Error creating room:", err);
-      toast.error("Network error. Please try again.");
+      console.error('Error creating room:', err)
+      toast.error(err instanceof Error ? err.message : 'Network error. Please try again.')
     } finally {
-      setIsCreating(false);
+      setIsCreating(false)
     }
-  };
+  }
 
-  const handleInvite = async (e) => {
-    e.preventDefault();
+  const handleInvite = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
     if (!inviteEmail.trim()) {
-      toast.error("Email cannot be empty");
-      return;
+      toast.error('Email cannot be empty')
+      return
     }
 
-    setIsInviting(true);
+    setIsInviting(true)
 
     try {
-      const response = await fetch("/api/invite/send-invite", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: inviteEmail,
-          roomId: selectedRoomId,
-        }),
-      });
-
-      if (response.ok) {
-        toast.success(`Invitation sent to ${inviteEmail}`);
-        setInviteEmail("");
-        setShowInviteDialog(false);
-      } else {
-        const errorData = await response.json();
-        toast.error(errorData.error || "Failed to send invite.");
-      }
+      await sendInvite({ email: inviteEmail, roomId: selectedRoomId })
+      toast.success(`Invitation sent to ${inviteEmail}`)
+      setInviteEmail('')
+      setShowInviteDialog(false)
     } catch (err) {
-      console.error("Error sending invite:", err);
-      toast.error("Network error. Please try again.");
+      console.error('Error sending invite:', err)
+      toast.error(err instanceof Error ? err.message : 'Network error. Please try again.')
     } finally {
-      setIsInviting(false);
+      setIsInviting(false)
     }
-  };
+  }
 
-  const handleRoomClick = (roomId) => {
-    navigate(`/${roomId}/expenses`);
-  };
+  const handleRoomClick = (roomId: number) => {
+    navigate(`/${roomId}/expenses`)
+  }
 
   return (
     <div className="min-h-screen page-shell">
@@ -127,7 +96,7 @@ function WelcomePage() {
               onClick={() => setShowCreateDialog(true)}
               className="btn-primary-expense px-4 py-2 text-sm font-semibold"
             >
-              <FontAwesomeIcon icon={faPlus} />
+              <Plus size={14} />
               Create Room
             </button>
           </div>
@@ -138,19 +107,19 @@ function WelcomePage() {
       <div className="max-w-6xl mx-auto px-6 py-12">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <FontAwesomeIcon icon={faSpinner} className="text-4xl text-primary mb-4 animate-spin" />
+            <LoaderCircle className="text-primary mb-4 animate-spin" size={36} />
             <p className="text-muted-foreground">Loading your rooms...</p>
           </div>
         ) : rooms.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 state-panel">
-            <FontAwesomeIcon icon={faUsers} className="text-5xl text-muted-foreground mb-4" />
+            <Users className="text-muted-foreground mb-4" size={48} />
             <h2 className="text-2xl font-semibold text-foreground mb-2">No Rooms Yet</h2>
             <p className="text-muted-foreground mb-6">Create your first expense tracking room to get started.</p>
             <button
               onClick={() => setShowCreateDialog(true)}
               className="btn-primary-expense px-6 py-3 font-medium"
             >
-              <FontAwesomeIcon icon={faPlus} />
+              <Plus size={14} />
               Create Your First Room
             </button>
           </div>
@@ -165,8 +134,8 @@ function WelcomePage() {
                 <div className="bg-primary p-6 text-primary-foreground">
                   <h3 className="text-xl font-semibold mb-1">{room.room_name}</h3>
                   <div className="flex items-center gap-2 text-primary-foreground/80 text-sm">
-                    <FontAwesomeIcon icon={faUsers} />
-                    <span>{room.member_count} member{room.member_count !== 1 ? "s" : ""}</span>
+                    <Users size={14} />
+                    <span>{room.member_count} member{Number(room.member_count) !== 1 ? 's' : ''}</span>
                   </div>
                 </div>
 
@@ -177,16 +146,16 @@ function WelcomePage() {
                     className="flex-1 flex items-center justify-center gap-2 btn-secondary-expense px-4 py-2 font-medium"
                   >
                     Open
-                    <FontAwesomeIcon icon={faChevronRight} className="text-sm" />
+                    <ChevronRight size={14} />
                   </button>
                   <button
                     onClick={() => {
-                      setSelectedRoomId(room.room_id);
-                      setShowInviteDialog(true);
+                      setSelectedRoomId(room.room_id)
+                      setShowInviteDialog(true)
                     }}
                     className="flex-1 flex items-center justify-center gap-2 btn-secondary-expense px-4 py-2 font-medium"
                   >
-                    <FontAwesomeIcon icon={faUserPlus} />
+                    <UserPlus size={14} />
                     Invite
                   </button>
                 </div>
@@ -214,8 +183,8 @@ function WelcomePage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowCreateDialog(false);
-                    setRoomName("");
+                    setShowCreateDialog(false)
+                    setRoomName('')
                   }}
                   className="flex-1 px-4 py-2 btn-secondary-expense font-medium"
                   disabled={isCreating}
@@ -227,8 +196,8 @@ function WelcomePage() {
                   className="flex-1 px-4 py-2 btn-primary-expense font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                   disabled={isCreating}
                 >
-                  {isCreating && <FontAwesomeIcon icon={faSpinner} className="animate-spin" />}
-                  {isCreating ? "Creating..." : "Create"}
+                  {isCreating && <LoaderCircle className="animate-spin" size={14} />}
+                  {isCreating ? 'Creating...' : 'Create'}
                 </button>
               </div>
             </form>
@@ -256,8 +225,8 @@ function WelcomePage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowInviteDialog(false);
-                    setInviteEmail("");
+                    setShowInviteDialog(false)
+                    setInviteEmail('')
                   }}
                   className="flex-1 px-4 py-2 btn-secondary-expense font-medium"
                   disabled={isInviting}
@@ -269,8 +238,8 @@ function WelcomePage() {
                   className="flex-1 px-4 py-2 btn-primary-expense font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                   disabled={isInviting}
                 >
-                  {isInviting && <FontAwesomeIcon icon={faSpinner} className="animate-spin" />}
-                  {isInviting ? "Sending..." : "Send Invite"}
+                  {isInviting && <LoaderCircle className="animate-spin" size={14} />}
+                  {isInviting ? 'Sending...' : 'Send Invite'}
                 </button>
               </div>
             </form>
@@ -278,7 +247,7 @@ function WelcomePage() {
         </div>
       )}
     </div>
-  );
+  )
 }
 
-export default WelcomePage;
+export default WelcomePage
