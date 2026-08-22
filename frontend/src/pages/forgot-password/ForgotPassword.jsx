@@ -45,18 +45,20 @@ function ForgotPassword() {
     e.preventDefault();
     setIsLoading(true);
 
-    if (!email.includes("@gmail.com")) {
+    const trimmedEmail = email.trim();
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(trimmedEmail)) {
       toast.error("Please enter a valid Gmail address.");
       setIsLoading(false);
       return;
     }
+    setEmail(trimmedEmail);
 
     try {
       const response = await fetch("/api/auth/send-code", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, purpose: "password_reset" }),
+        body: JSON.stringify({ email: trimmedEmail, purpose: "password_reset" }),
       });
 
       if (!response.ok) {

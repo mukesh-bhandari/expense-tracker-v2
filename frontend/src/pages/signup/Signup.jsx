@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useContext } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { AuthContext } from "../../contexts/AuthContext.jsx";
+import { AuthContext } from "../../contexts/AuthContext.js";
 import { toast } from "sonner";
 import { 
   faUser, 
@@ -41,7 +41,6 @@ function Signup() {
   const { setIsAuthenticated, setUser } = useContext(AuthContext);
   const otpRefs = useRef([]);
   const inviteEmail = searchParams.get("email") || "";
-  const skipVerification = searchParams.get("skipVerification") === "true";
   
   // Decode the redirect URL if it exists
   const encodedRedirect = searchParams.get("redirect");
@@ -71,19 +70,21 @@ function Signup() {
     e.preventDefault();
     setIsLoading(true);
 
+    const trimmedEmail = email.trim();
     // Basic Gmail validation
-    if (!email.includes("@gmail.com")) {
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(trimmedEmail)) {
       toast.error("Please enter a valid Gmail address.");
       setIsLoading(false);
       return;
     }
+    setEmail(trimmedEmail);
 
     try {
       const response = await fetch("/api/auth/send-code", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: trimmedEmail }),
       });
 
       if (!response.ok) {

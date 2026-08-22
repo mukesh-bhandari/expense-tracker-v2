@@ -7,7 +7,7 @@ import Room from "./pages/room/Room.jsx";
 import Home from "./pages/home/Home.jsx";
 import Expenses from "./pages/expenses/Expenses.jsx";
 import InviteAccept from "./pages/invite/InviteAccept.jsx";
-import { AuthProvider } from "./contexts/AuthContext.jsx";
+import { AuthProvider } from "./contexts/AuthProvider.jsx";
 import { Toaster } from "sonner";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Login from "./pages/login/Login.jsx";

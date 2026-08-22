@@ -203,15 +203,31 @@
 ### F14 — Backdrop clickable during active delete ✅ FIXED
 - `ConfirmDeleteDialog.jsx`: backdrop `onClick` disabled while `isLoading`.
 
-## Phase 8 — Polish & Config ⏳ PLANNED
+## Phase 8 — Polish & Config ✅ DONE
 
-| Bug | Fix |
-|-----|-----|
-| F15 | Toast on silent validation failure in `ExpenseForm` |
-| F16 | Proper email validation (regex / `endsWith` + trimming) |
-| F17 | Restore previous amount when unskipping in `EditModal` |
-| F18 | Remove unused `useEffect` import in `ExpenseForm` |
-| C01 | Consolidate duplicate `vercel.json` files |
+### F15 — Silent validation failure ✅ FIXED
+- `ExpenseForm.jsx`: missing-fields branch now shows `toast.error("Please fill in all fields")`.
+
+### F16 — Email validation bypassable ✅ FIXED
+- `Signup.jsx` + `ForgotPassword.jsx`: replaced `email.includes("@gmail.com")` with `/^[a-zA-Z0-9._%+-]+@gmail\.com$/` on the trimmed email; normalize via `setEmail(trimmedEmail)`.
+
+### F17 — Unskipping restores amount to "0" ✅ FIXED
+- `EditModal.jsx`: rows now carry a `prevAmount` field; skipping stores the prior amount and unskipping restores it.
+
+### F18 — Unused `useEffect` import ✅ FIXED
+- `ExpenseForm.jsx`: removed `useEffect` from the React import.
+
+### C01 — Duplicate `vercel.json` ⏳ DEFERRED (by decision)
+- Left as-is (root `experimentalServices` + separate `backend/`/`frontend/` configs) pending confirmation of the actual Vercel deployment model.
+
+### Bonus — remaining lint cleanup ✅ DONE
+- `Home.jsx`: removed unused icon imports (`faShieldAlt`, `faBell`, `faCalendarAlt`, `faTags`) and the dead `stats` array.
+- `Login.jsx`: dropped the unused `setKeepSignedIn` setter.
+- `Signup.jsx`: removed the dead `skipVerification` line.
+- Auth context split into `contexts/AuthContext.js` (context only) + `contexts/AuthProvider.jsx` (provider only) — resolves the `react-refresh/only-export-components` error; import sites updated.
+- `Expenses.jsx`: wrapped `fetchRoomMembers`/`fetchExpenses` in `useCallback` and added them to the mount effect deps (resolves the `exhaustive-deps` warning).
+
+`npm run lint` is now clean (0 problems).
 
 ---
 

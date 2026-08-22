@@ -5,14 +5,10 @@ import {
   faUserPlus, 
   faChartLine, 
   faWallet, 
-  faShieldAlt, 
   faMobile, 
-  faBell, 
   faUsers,
   faArrowRight,
   faDollarSign,
-  faCalendarAlt,
-  faTags
 } from "@fortawesome/free-solid-svg-icons";
 
 function Home() {
@@ -50,18 +46,12 @@ function Home() {
       description: "Access your expenses anywhere with our responsive web and mobile apps."
     },
      {
-      icon: faDollarSign,
-      title: "Balance Sheet",
-      description: "Easily view who owes whom and settle up in one click."
-    }
-  ];
+       icon: faDollarSign,
+       title: "Balance Sheet",
+       description: "Easily view who owes whom and settle up in one click."
+     }
+   ];
 
-  const stats = [
-    { number: "10K+", label: "Active Users" },
-    { number: "$2M+", label: "Tracked Expenses" },
-    { number: "50+", label: "Countries" },
-    { number: "4.9★", label: "User Rating" }
-  ];
 
   return (
     <div className="min-h-screen bg-background">

@@ -17,6 +17,7 @@ function buildInitialRows(expense, members, initialSkipUserId) {
         username: member.username,
         amount: String(amountVal),
         skipped: amountVal === 0,
+        prevAmount: amountVal === 0 ? null : String(amountVal),
       };
     }
     return {
@@ -24,6 +25,7 @@ function buildInitialRows(expense, members, initialSkipUserId) {
       username: member.username,
       amount: "0",
       skipped: true,
+      prevAmount: null,
     };
   });
 
@@ -32,9 +34,9 @@ function buildInitialRows(expense, members, initialSkipUserId) {
     if (idx !== -1) {
       const wasSkipped = initialized[idx].skipped;
       if (wasSkipped) {
-        initialized[idx] = { ...initialized[idx], skipped: false, amount: "0" };
+        initialized[idx] = { ...initialized[idx], skipped: false, amount: initialized[idx].prevAmount ?? "0" };
       } else {
-        initialized[idx] = { ...initialized[idx], skipped: true, amount: "0" };
+        initialized[idx] = { ...initialized[idx], skipped: true, prevAmount: initialized[idx].amount, amount: "0" };
       }
     }
   }
@@ -58,11 +60,15 @@ function ExpenseEditModal({ expense, members, onClose, onSave, initialSkipUserId
 
   const handleToggleSkip = (userId) => {
     setRows((prev) =>
-      prev.map((row) =>
-        row.userId === userId
-          ? { ...row, skipped: !row.skipped, amount: !row.skipped ? "0" : row.amount }
-          : row
-      )
+      prev.map((row) => {
+        if (row.userId !== userId) return row;
+        if (row.skipped) {
+          // Unskip: restore the previous (pre-skip) amount
+          return { ...row, skipped: false, amount: row.prevAmount ?? "0" };
+        }
+        // Skip: zero the amount but remember it for later restore
+        return { ...row, skipped: true, prevAmount: row.amount, amount: "0" };
+      })
     );
   };
 

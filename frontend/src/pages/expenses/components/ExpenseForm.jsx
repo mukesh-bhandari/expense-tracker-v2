@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { NepaliDatePicker } from "nepali-datepicker-reactjs";
 import { useParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ function ExpenseForm({ members, onAddExpense }) {
 
     if (!item || !price || !paidBy) {
       setIsAdding(false);
+      toast.error("Please fill in all fields");
       return;
     }
 

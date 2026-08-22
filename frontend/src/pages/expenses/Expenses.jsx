@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faHome } from "@fortawesome/free-solid-svg-icons";
 import ExpenseList from "./components/ExpenseList.jsx";
@@ -24,12 +24,46 @@ function Expenses() {
 
   const blocker = useBlocker(isDirty);
 
+  const fetchRoomMembers = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/rooms/${roomId}/members`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMembers(data);
+      } else {
+        toast.error("Failed to load room members");
+      }
+    } catch (error) {
+      console.error("Error fetching room members:", error);
+      toast.error("Failed to load room members");
+    }
+  }, [roomId]);
+
+  const fetchExpenses = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/expenses/${roomId}/get-expenses`, {
+        credentials: "include",
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setExpenses(data);
+      } else {
+        toast.error("Failed to load expenses");
+      }
+    } catch (error) {
+      console.error("Error fetching expenses:", error);
+      toast.error("Failed to load expenses");
+    }
+  }, [roomId]);
+
   useEffect(() => {
     if (roomId) {
       fetchRoomMembers();
       fetchExpenses();
     }
-  }, [roomId]);
+  }, [roomId, fetchRoomMembers, fetchExpenses]);
 
   // Warn before closing/reloading the tab with unsaved changes
   useEffect(() => {
@@ -49,40 +83,6 @@ function Expenses() {
       setNetTransactions(calculateTransactionsFromExpenses(expenses));
     }
   }, [expenses, isBalanceSheetOpen]);
-
-  const fetchRoomMembers = async () => {
-    try {
-      const response = await fetch(`/api/rooms/${roomId}/members`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setMembers(data);
-      } else {
-        toast.error("Failed to load room members");
-      }
-    } catch (error) {
-      console.error("Error fetching room members:", error);
-      toast.error("Failed to load room members");
-    }
-  };
-
-  const fetchExpenses = async () => {
-    try {
-      const response = await fetch(`/api/expenses/${roomId}/get-expenses`, {
-        credentials: "include",
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setExpenses(data);
-      } else {
-        toast.error("Failed to load expenses");
-      }
-    } catch (error) {
-      console.error("Error fetching expenses:", error);
-      toast.error("Failed to load expenses");
-    }
-  };
 
   const handleOpenBalanceSheet = () => {
     const transactions = calculateTransactionsFromExpenses(expenses);
