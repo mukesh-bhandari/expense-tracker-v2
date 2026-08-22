@@ -3,6 +3,7 @@
 **Session date:** August 16, 2026
 **Branch:** `bug-fix`
 **Purpose:** Phase-by-phase implementation of the bugs identified in `REVIEW.md`.
+**Summary:** 47 issues resolved across 8 phases; 7 remaining/open (see [Remaining / Open Issues](#remaining--open-issues)).
 
 ---
 
@@ -231,7 +232,16 @@
 
 ---
 
-## Pending User Actions
+## Remaining / Open Issues
 
-1. **B03** — rotate exposed credentials (Neon DB password, JWT secrets, Gmail app password).
-2. **B18 (optional)** — run the `UNIQUE (email, type)` migration on `verification` to fully close the send-code race.
+See also `REVIEW.md` for the full remaining-items document.
+
+| Bug | Severity | Status | Action / Fix |
+|-----|----------|--------|--------------|
+| **B03** | CRITICAL | Open | Rotate exposed credentials (Neon DB, JWT secrets, Gmail app password). |
+| **B05** | HIGH | Mitigated | `verify-token` rate-limited (20/min); still public. Optional: require auth. |
+| **B07** | HIGH | Skipped | Any member can delete expenses. Fix: add ownership check. |
+| **B08** | HIGH | Skipped | Any member can modify shares. Fix: restrict to creator/share-owner/admin. |
+| **B18** | MEDIUM | Partial | Transaction added. Optional: run `UNIQUE (email, type)` migration. |
+| **C01** | — | Deferred | Duplicate `vercel.json`. Consolidate after confirming Vercel deployment model. |
+| **B32** | LOW | New | `/verify` catch block returns 200 + `email: null` on DB error. Fix: use `serverError`. |
