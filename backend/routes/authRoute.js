@@ -200,11 +200,11 @@ router.post("/signup", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
   try {
-    const result = await pool.query("SELECT * FROM users WHERE username = $1", [
-      username,
+    const result = await pool.query("SELECT * FROM users WHERE gmail = $1", [
+      email,
     ]);
 
     if (result.rows.length === 0) {

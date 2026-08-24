@@ -4,15 +4,15 @@ import { AuthContext } from "../../contexts/AuthContext.jsx";
 import { toast } from "sonner";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  faUser,
   faLock,
   faSignInAlt,
   faEye,
   faEyeSlash,
+  faEnvelope,
 } from "@fortawesome/free-solid-svg-icons";
 
 function Login() {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [keepSignedIn, setKeepSignedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -34,7 +34,7 @@ function Login() {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password, keepSignedIn }),
+        body: JSON.stringify({ email, password, keepSignedIn }),
       });
       const data = await response.json();
 
@@ -77,27 +77,27 @@ function Login() {
         {/* Login Form */}
         <div className="expense-form p-8">
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Username Field */}
+          {/* Email Field */}
           <div>
             <label
-              htmlFor="username"
+              htmlFor="email"
               className="block text-sm font-medium text-muted-foreground mb-2"
             >
-              Username
+              Email
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <FontAwesomeIcon
-                  icon={faUser}
+                  icon={faEnvelope}
                   className="text-muted-foreground text-sm"
                 />
               </div>
               <input
-                id="username"
-                type="text"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
                 className="input-financial w-full pl-10 pr-4 py-3 text-sm font-medium"
                 disabled={isLoading}
@@ -219,7 +219,7 @@ function Login() {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={isLoading || !username || !password}
+            disabled={isLoading || !email || !password}
             className="btn-primary-expense w-full cursor-pointer py-3 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
