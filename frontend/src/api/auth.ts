@@ -14,7 +14,7 @@ export function login(payload: {
   username: string
   password: string
   keepSignedIn: boolean
-}): Promise<{ message: string }> {
+}): Promise<{ message: string; user: User }> {
   return request('/api/auth/login', { method: 'POST', body: payload })
 }
 
@@ -22,7 +22,7 @@ export function signup(payload: {
   email: string
   username: string
   password: string
-}): Promise<{ message: string }> {
+}): Promise<{ message: string; user: User }> {
   return request('/api/auth/signup', { method: 'POST', body: payload })
 }
 

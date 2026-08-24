@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Pencil } from 'lucide-react'
 import type { Expense, Member, Split } from '../../../types'
 
@@ -7,6 +7,7 @@ interface SplitRow {
   username: string
   amount: string
   skipped: boolean
+  prevAmount: string | null
 }
 
 interface ExpenseEditModalProps {
@@ -17,6 +18,60 @@ interface ExpenseEditModalProps {
   initialSkipUserId?: number | null
 }
 
+function buildInitialRows(
+  expense: Expense,
+  members: Member[],
+  initialSkipUserId: number | null | undefined,
+): SplitRow[] {
+  const splitsMap: Record<number, Split> = {}
+  expense.splits.forEach((split) => {
+    splitsMap[split.user_id] = split
+  })
+
+  const initialized: SplitRow[] = members.map((member) => {
+    const split = splitsMap[member.id]
+    if (split) {
+      const amountVal = parseFloat(split.amount_owed)
+      return {
+        userId: member.id,
+        username: member.username,
+        amount: String(amountVal),
+        skipped: amountVal === 0,
+        prevAmount: amountVal === 0 ? null : String(amountVal),
+      }
+    }
+    return {
+      userId: member.id,
+      username: member.username,
+      amount: '0',
+      skipped: true,
+      prevAmount: null,
+    }
+  })
+
+  if (initialSkipUserId) {
+    const idx = initialized.findIndex((r) => r.userId === initialSkipUserId)
+    if (idx !== -1) {
+      if (initialized[idx].skipped) {
+        initialized[idx] = {
+          ...initialized[idx],
+          skipped: false,
+          amount: initialized[idx].prevAmount ?? '0',
+        }
+      } else {
+        initialized[idx] = {
+          ...initialized[idx],
+          skipped: true,
+          prevAmount: initialized[idx].amount,
+          amount: '0',
+        }
+      }
+    }
+  }
+
+  return initialized
+}
+
 function ExpenseEditModal({
   expense,
   members,
@@ -24,48 +79,10 @@ function ExpenseEditModal({
   onSave,
   initialSkipUserId = null,
 }: ExpenseEditModalProps) {
-  const [rows, setRows] = useState<SplitRow[]>([])
+  const [rows, setRows] = useState<SplitRow[]>(() =>
+    buildInitialRows(expense, members, initialSkipUserId),
+  )
   const [isSaving, setIsSaving] = useState(false)
-
-  useEffect(() => {
-    const splitsMap: Record<number, Split> = {}
-    expense.splits.forEach((split) => {
-      splitsMap[split.user_id] = split
-    })
-
-    const initialized = members.map<SplitRow>((member) => {
-      const split = splitsMap[member.id]
-      if (split) {
-        const amountVal = parseFloat(split.amount_owed)
-        return {
-          userId: member.id,
-          username: member.username,
-          amount: String(amountVal),
-          skipped: amountVal === 0,
-        }
-      }
-      return {
-        userId: member.id,
-        username: member.username,
-        amount: '0',
-        skipped: true,
-      }
-    })
-
-    if (initialSkipUserId) {
-      const idx = initialized.findIndex((r) => r.userId === initialSkipUserId)
-      if (idx !== -1) {
-        const wasSkipped = initialized[idx].skipped
-        if (wasSkipped) {
-          initialized[idx] = { ...initialized[idx], skipped: false, amount: '0' }
-        } else {
-          initialized[idx] = { ...initialized[idx], skipped: true, amount: '0' }
-        }
-      }
-    }
-
-    setRows(initialized)
-  }, [expense, members, initialSkipUserId])
 
   const totalAllocated = rows.reduce(
     (sum, row) => sum + (parseFloat(row.amount) || 0),
@@ -78,11 +95,13 @@ function ExpenseEditModal({
 
   const handleToggleSkip = (userId: number) => {
     setRows((prev) =>
-      prev.map((row) =>
-        row.userId === userId
-          ? { ...row, skipped: !row.skipped, amount: !row.skipped ? '0' : row.amount }
-          : row,
-      ),
+      prev.map((row) => {
+        if (row.userId !== userId) return row
+        if (row.skipped) {
+          return { ...row, skipped: false, amount: row.prevAmount ?? '0' }
+        }
+        return { ...row, skipped: true, prevAmount: row.amount, amount: '0' }
+      }),
     )
   }
 

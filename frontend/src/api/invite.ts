@@ -25,7 +25,7 @@ export function verifyToken(params: {
 export function acceptInvite(payload: {
   token: string
   email: string
-  roomId: string | null
+  roomId: number | string | null
 }): Promise<{ message: string }> {
   return request('/api/invite/accept-invite', { method: 'POST', body: payload })
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { LoaderCircle, CircleCheck, CircleAlert } from 'lucide-react'
@@ -20,6 +20,7 @@ function InviteAccept() {
   const { isAuthenticated, user, logout } = useAuth()
   const [status, setStatus] = useState<Status>('loading')
   const [error, setError] = useState('')
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const token = searchParams.get('token')
   const email = searchParams.get('email')
@@ -42,14 +43,14 @@ function InviteAccept() {
         roomId: inviteRoomId ?? undefined,
       })
 
-      // Accept the invite
+      // Accept the invite (use the server-resolved roomId, not the URL param)
       setStatus('accepting')
-      await acceptInvite({ token, email, roomId: inviteRoomId })
+      await acceptInvite({ token, email, roomId: verifyData.roomId })
 
       setStatus('accepted')
       toast.success('Invite accepted! Redirecting...')
       // Redirect to room after 2 seconds
-      setTimeout(() => {
+      redirectTimerRef.current = setTimeout(() => {
         navigate(`/${verifyData.roomId}/expenses`)
       }, 2000)
     } catch (err) {
@@ -112,6 +113,15 @@ function InviteAccept() {
     // Verify token
     verifyAndAcceptInvite()
   }, [isAuthenticated, user, token, email, inviteRoomId, navigate, verifyAndAcceptInvite])
+
+  // Clear the redirect timer if the component unmounts before it fires
+  useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current)
+      }
+    }
+  }, [])
 
   if (isAuthenticated === null) {
     return (

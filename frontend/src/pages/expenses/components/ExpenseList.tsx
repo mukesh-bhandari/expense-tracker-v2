@@ -14,14 +14,20 @@ interface DeleteDialogState {
 
 interface ExpenseListProps {
   expenses?: Expense[]
+  isDirty?: boolean
   onExpensesUpdate: (expenses: Expense[]) => void
+  onExpensesPersisted: (expenses: Expense[]) => void
+  onSaved: () => void
   onOpenBalanceSheet: () => void
   onOpenEditModal: (expense: Expense, skipUserId?: number | null) => void
 }
 
 function ExpenseList({
   expenses = [],
+  isDirty = false,
   onExpensesUpdate,
+  onExpensesPersisted,
+  onSaved,
   onOpenBalanceSheet,
   onOpenEditModal,
 }: ExpenseListProps) {
@@ -154,7 +160,7 @@ function ExpenseList({
     try {
       await deleteExpense(expense.room_id, expense.id)
       const updatedExpenses = expenses.filter((exp) => exp.id !== expense.id)
-      onExpensesUpdate(updatedExpenses)
+      onExpensesPersisted(updatedExpenses)
       closeDeleteDialog()
     } catch (error) {
       console.error('Error deleting expense:', error)
@@ -187,6 +193,7 @@ function ExpenseList({
       if (!roomId) return
       await saveExpenseStates(roomId, payload)
       toast.success('Changes saved successfully')
+      onSaved()
     } catch (error) {
       console.error('Error saving states:', error)
       toast.error('Failed to save changes')
@@ -213,6 +220,11 @@ function ExpenseList({
                 <User className="text-warning" size={14} />
                 View Balances
               </button>
+              {isDirty && (
+                <span className="px-2 py-1 text-xs font-semibold text-warning bg-warning/10 border border-warning/20 rounded-md">
+                  Unsaved changes
+                </span>
+              )}
               <button
                 onClick={handleSaveButton}
                 disabled={isSaving}

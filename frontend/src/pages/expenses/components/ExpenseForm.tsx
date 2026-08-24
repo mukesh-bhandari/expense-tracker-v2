@@ -26,6 +26,7 @@ function ExpenseForm({ members, onAddExpense }: ExpenseFormProps) {
 
     if (!item || !price || !paidBy) {
       setIsAdding(false)
+      toast.error('Please fill in all fields')
       return
     }
 
@@ -96,7 +97,7 @@ function ExpenseForm({ members, onAddExpense }: ExpenseFormProps) {
                 placeholder="0.00"
                 value={price}
                 onChange={(e) => {
-                  if (/^\d*(\.\d{0,2})?$/.test(e.target.value)) {
+                  if (/^(\d+(\.\d{0,2})?)?$/.test(e.target.value)) {
                     setPrice(e.target.value)
                   }
                 }}

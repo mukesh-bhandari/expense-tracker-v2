@@ -47,7 +47,7 @@ function WelcomePage() {
 
     try {
       const data = await createRoom(roomName)
-      setRooms([...rooms, data.data])
+      setRooms((prev) => [...prev, data.data])
       setRoomName('')
       setShowCreateDialog(false)
       toast.success('Room created successfully!')

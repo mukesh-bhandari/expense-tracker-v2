@@ -3,55 +3,95 @@ const pool = require("../config/db");
 const BS = require("bikram-sambat-js");
 const authenticateUser = require("../middleware/auth");
 const authorizeRoomMember = require("../middleware/roomAuth");
+const { z } = require("zod");
+const { serverError } = require("../utils/errors");
 
 const router = express.Router();
 
+const addExpenseSchema = z.object({
+  item: z.string().trim().min(1, "Item is required"),
+  price: z
+    .union([z.string(), z.number()])
+    .transform((v) => parseFloat(v))
+    .refine((v) => Number.isFinite(v) && v > 0, "Price must be a positive number"),
+  paidBy: z.coerce.number().int().positive("paidBy is required"),
+  date: z.string().optional(),
+});
+
+const saveStatesSchema = z.object({
+  expenses: z
+    .array(
+      z.object({
+        id: z.number().int().positive(),
+        transaction_complete: z.boolean(),
+        splits: z
+          .array(
+            z.object({
+              id: z.number().int().positive(),
+              amount_owed: z.number().min(0),
+              is_paid: z.boolean(),
+            })
+          )
+          .min(1),
+      })
+    )
+    .min(1),
+});
+
 router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, async (req, res) => {
   const { roomId } = req.params;
-  const { item, price, paidBy, date } = req.body;
 
-  // Validate required fields
-  if (!item || !price || !paidBy) {
-    return res.status(400).json({ error: "Missing required fields: item, price, paidBy" });
+  const parsed = addExpenseSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0].message });
   }
+  const { item, price: priceNum, paidBy, date } = parsed.data;
 
   let dateToInsert = date;
-  if (date === "") {
+  if (!date) {
     const currentDate = new Date();
     dateToInsert = BS.ADToBS(currentDate);
   }
 
   let client;
   try {
-    client = await pool.connect();
-    await client.query("BEGIN");
-
-    // Get members first and validate
-    const membersResult = await client.query(
+    // Get members first and validate (read-only, before transaction)
+    const membersResult = await pool.query(
       `SELECT user_id FROM room_members WHERE room_id = $1`,
       [roomId]
     );
 
     const members = membersResult.rows;
-    
+
     if (members.length === 0) {
-      throw new Error("No members in this room");
+      return res.status(400).json({ error: "No members in this room" });
+    }
+
+    const isPayerMember = members.some(
+      (member) => Number(member.user_id) === Number(paidBy)
+    );
+    if (!isPayerMember) {
+      return res.status(400).json({ error: "paidBy must be a member of this room" });
     }
 
     // Calculate share with rounding - equal for all, remainder up to 0.1 accepted
-    const priceNum = parseFloat(price);
     const memberCount = members.length;
     const roundedShare = Math.round((priceNum / memberCount) * 100) / 100;
     const remainder = Math.round((priceNum - roundedShare * memberCount) * 100) / 100;
 
     if (Math.abs(remainder) > 0.1) {
-      throw new Error("Cannot split evenly — remainder exceeds 0.1 NPR. Try a different amount.");
+      return res.status(400).json({
+        error: "Cannot split evenly — remainder exceeds 0.1 NPR. Try a different amount.",
+      });
     }
+
+    client = await pool.connect();
+    await client.query("BEGIN");
 
     // Insert expense
     const expenseResult = await client.query(
       `INSERT INTO expenses (room_id, item, price, paid_by, bs_date) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [roomId, item, price, paidBy, dateToInsert]
+      [roomId, item, priceNum, paidBy, dateToInsert]
     );
 
     const expense = expenseResult.rows[0];
@@ -65,7 +105,7 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
           expense.id,
           member.user_id,
           roundedShare,
-          member.user_id === paidBy,
+          Number(member.user_id) === Number(paidBy),
         ]
       );
     }
@@ -93,7 +133,7 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
     };
 
     await client.query("COMMIT");
-    res.status(200).json({
+    res.status(201).json({
       message: "Expense added successfully",
       expense: newExpense,
     });
@@ -101,8 +141,7 @@ router.post("/:roomId/add-expenses", authenticateUser, authorizeRoomMember, asyn
     if (client) {
       try { await client.query("ROLLBACK"); } catch (_) {}
     }
-    console.error("Error adding expense:", error);
-    res.status(500).json({ error: error.message || "Error adding expense" });
+    serverError(res, error, "Error adding expense");
   } finally {
     if (client) client.release();
   }
@@ -142,14 +181,18 @@ router.get("/:roomId/get-expenses", authenticateUser, authorizeRoomMember, async
     // console.log(expensesWithSplits)
     res.json(expensesWithSplits);
   } catch (error) {
-    console.log(error.message);
-    res.status(500).send(" error getting expenses");
+    serverError(res, error, "Error getting expenses");
   }
 });
 
 router.post("/:roomId/save-states", authenticateUser, authorizeRoomMember, async (req, res) => {
   const { roomId } = req.params;
-  const { expenses } = req.body;
+
+  const parsed = saveStatesSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: parsed.error.issues[0].message });
+  }
+  const { expenses } = parsed.data;
 
   let client;
   try {
@@ -168,27 +211,55 @@ router.post("/:roomId/save-states", authenticateUser, authorizeRoomMember, async
       return res.status(403).json({ error: "One or more expenses do not belong to this room" });
     }
 
-    // Update all splits sequentially
+    // Validate every split belongs to its claimed expense
+    const splitIds = expenses.flatMap((e) => e.splits.map((s) => s.id));
+    const splitsOwnershipResult = await client.query(
+      `SELECT id, expense_id FROM expense_shares WHERE id = ANY($1)`,
+      [splitIds]
+    );
+    const splitOwnerMap = new Map(
+      splitsOwnershipResult.rows.map((row) => [row.id, row.expense_id])
+    );
+
     for (const expense of expenses) {
       for (const split of expense.splits) {
-        await client.query(
-          `UPDATE expense_shares 
-           SET amount_owed = $1, is_paid = $2 
-           WHERE id = $3`,
-          [split.amount_owed, split.is_paid, split.id]
-        );
+        if (splitOwnerMap.get(split.id) !== expense.id) {
+          try { await client.query("ROLLBACK"); } catch (_) {}
+          return res.status(403).json({ error: "One or more splits do not belong to their claimed expense" });
+        }
       }
     }
 
-    // Update transaction_complete status for expenses sequentially
+    // Batch update all splits in one query
+    const splitIdArray = [];
+    const amountOwedArray = [];
+    const isPaidArray = [];
     for (const expense of expenses) {
-      await client.query(
-        `UPDATE expenses 
-         SET transaction_complete = $1 
-         WHERE id = $2`,
-        [expense.transaction_complete, expense.id]
-      );
+      for (const split of expense.splits) {
+        splitIdArray.push(split.id);
+        amountOwedArray.push(split.amount_owed);
+        isPaidArray.push(split.is_paid);
+      }
     }
+
+    await client.query(
+      `UPDATE expense_shares AS es
+       SET amount_owed = v.amount_owed, is_paid = v.is_paid
+       FROM UNNEST($1::int[], $2::numeric[], $3::boolean[]) AS v(id, amount_owed, is_paid)
+       WHERE es.id = v.id`,
+      [splitIdArray, amountOwedArray, isPaidArray]
+    );
+
+    // Batch update transaction_complete in one query
+    const completeIds = expenses.map((e) => e.id);
+    const completeValues = expenses.map((e) => e.transaction_complete);
+    await client.query(
+      `UPDATE expenses AS e
+       SET transaction_complete = v.transaction_complete
+       FROM UNNEST($1::int[], $2::boolean[]) AS v(id, transaction_complete)
+       WHERE e.id = v.id`,
+      [completeIds, completeValues]
+    );
 
     await client.query("COMMIT");
     res.json({ message: "Updated successfully" });
@@ -196,8 +267,7 @@ router.post("/:roomId/save-states", authenticateUser, authorizeRoomMember, async
     if (client) {
       try { await client.query("ROLLBACK"); } catch (_) {}
     }
-    console.error("Error saving states:", error);
-    res.status(500).json({ error: "Failed to save" });
+    serverError(res, error, "Failed to save");
   } finally {
     if (client) client.release();
   }
@@ -234,8 +304,7 @@ router.delete("/:roomId/:expenseId", authenticateUser, authorizeRoomMember, asyn
     if (client) {
       try { await client.query("ROLLBACK"); } catch (_) {}
     }
-    console.error("Error deleting expense:", error);
-    res.status(500).json({ error: "Error deleting expense" });
+    serverError(res, error, "Error deleting expense");
   } finally {
     if (client) client.release();
   }

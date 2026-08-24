@@ -9,6 +9,7 @@ const authRoute = require("./routes/authRoute");
 const inviteRoute = require("./routes/inviteRoute");
 const roomRoute = require("./routes/roomRoute");
 const expenseRoute = require("./routes/expenseRoute")
+const { globalLimiter } = require("./config/rateLimit");
 
 
 const allowedOrigins = [
@@ -16,6 +17,8 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
   "http://localhost:5173",  // Local Vite dev server
 ].filter(Boolean);
+
+app.set("trust proxy", 1);
 
 app.use(
   cors({
@@ -29,8 +32,9 @@ app.use(cookieParser());
 
 pool.on("error", (err) => {
   console.error("Unexpected error on idle client", err);
-  process.exit(-1);
 });
+
+app.use("/api", globalLimiter);
 
 app.use("/api/auth", authRoute);
 app.use("/api/invite", inviteRoute);

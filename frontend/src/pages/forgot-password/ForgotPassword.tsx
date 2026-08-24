@@ -45,14 +45,16 @@ function ForgotPassword() {
     e.preventDefault()
     setIsLoading(true)
 
-    if (!email.includes('@gmail.com')) {
+    const trimmedEmail = email.trim()
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(trimmedEmail)) {
       toast.error('Please enter a valid Gmail address.')
       setIsLoading(false)
       return
     }
+    setEmail(trimmedEmail)
 
     try {
-      await sendCode({ email, purpose: 'password_reset' })
+      await sendCode({ email: trimmedEmail, purpose: 'password_reset' })
       setCurrentStep(2)
       setResendTimer(60)
       setCanResendOtp(false)

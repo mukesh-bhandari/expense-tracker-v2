@@ -38,7 +38,7 @@ function Signup() {
 
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { setIsAuthenticated } = useAuth()
+  const { setIsAuthenticated, setUser } = useAuth()
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
   const inviteEmail = searchParams.get('email') || ''
 
@@ -70,15 +70,17 @@ function Signup() {
     e.preventDefault()
     setIsLoading(true)
 
-    // Basic Gmail validation
-    if (!email.includes('@gmail.com')) {
+    const trimmedEmail = email.trim()
+    // Gmail validation
+    if (!/^[a-zA-Z0-9._%+-]+@gmail\.com$/.test(trimmedEmail)) {
       toast.error('Please enter a valid Gmail address.')
       setIsLoading(false)
       return
     }
+    setEmail(trimmedEmail)
 
     try {
-      await sendCode({ email })
+      await sendCode({ email: trimmedEmail })
       setCurrentStep(2)
       setResendTimer(60)
       setCanResendOtp(false)
@@ -185,9 +187,10 @@ function Signup() {
     }
 
     try {
-      await signup({ email, username, password })
+      const data = await signup({ email, username, password })
       // Signup successful = already authenticated with correct credentials
       setIsAuthenticated(true)
+      if (data.user) setUser(data.user)
       toast.success('Account created successfully!')
       // Redirect to the stored URL or dashboard if no redirect was provided
       navigate(redirectUrl || '/rooms')

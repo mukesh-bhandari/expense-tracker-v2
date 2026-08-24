@@ -1,4 +1,5 @@
 const pool = require("../config/db");
+const { serverError } = require("../utils/errors");
 
 /**
  * Middleware to authorize room membership
@@ -7,26 +8,8 @@ const pool = require("../config/db");
  */
 const authorizeRoomMember = async (req, res, next) => {
   try {
-    let roomId = req.params.roomId; // Try to get from route params first
+    const roomId = req.params.roomId;
     const userId = req.user.id;
-
-    // If no roomId in params, try to get it from request body
-    if (!roomId && req.body && req.body.roomId) {
-      roomId = req.body.roomId;
-    }
-
-    // If still no roomId, try to get it from expenses array (for /save-states endpoint)
-    if (!roomId && req.body && req.body.expenses && req.body.expenses.length > 0) {
-      // Query database to find room_id for the first expense
-      const expenseId = req.body.expenses[0].id;
-      const expenseResult = await pool.query(
-        "SELECT room_id FROM expenses WHERE id = $1",
-        [expenseId]
-      );
-      if (expenseResult.rows.length > 0) {
-        roomId = expenseResult.rows[0].room_id;
-      }
-    }
 
     // Validate roomId exists
     if (!roomId) {
@@ -46,8 +29,7 @@ const authorizeRoomMember = async (req, res, next) => {
     // User is authorized, proceed to next middleware/route handler
     next();
   } catch (error) {
-    console.error("Error checking room membership:", error);
-    res.status(500).json({ error: "Error verifying room access" });
+    serverError(res, error, "Error verifying room access");
   }
 };
 

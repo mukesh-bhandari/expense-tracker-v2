@@ -19,7 +19,7 @@ function ConfirmDeleteDialog({
     <>
       <div
         className="fixed inset-0 modal-backdrop z-40"
-        onClick={onCancel}
+        onClick={isLoading ? undefined : onCancel}
       />
       <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-card border border-border rounded-xl z-50 shadow-xl p-6">
         <h2 className="text-lg font-semibold text-foreground mb-2">Delete Expense?</h2>

@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ArrowLeft, Home } from 'lucide-react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useBlocker } from 'react-router-dom'
 import { toast } from 'sonner'
 import ExpenseList from './components/ExpenseList'
 import BalanceSheet from './components/BalanceSheet'
 import ExpenseEditModal from './components/EditModal'
 import ExpenseForm from './components/ExpenseForm'
+import UnsavedChangesDialog from '../../components/UnsavedChangesDialog'
 import { calculateTransactionsFromExpenses } from './utils/expenseUtils'
 import { getExpenses, saveExpenseStates } from '../../api/expenses'
 import { getRoomMembers } from '../../api/rooms'
@@ -21,6 +22,9 @@ function Expenses() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null)
   const [initialSkipUserId, setInitialSkipUserId] = useState<number | null>(null)
+  const [isDirty, setIsDirty] = useState(false)
+
+  const blocker = useBlocker(isDirty)
 
   const fetchRoomMembers = useCallback(async () => {
     if (!roomId) return
@@ -29,6 +33,7 @@ function Expenses() {
       setMembers(data)
     } catch (error) {
       console.error('Error fetching room members:', error)
+      toast.error('Failed to load room members')
     }
   }, [roomId])
 
@@ -39,6 +44,7 @@ function Expenses() {
       setExpenses(data)
     } catch (error) {
       console.error('Error fetching expenses:', error)
+      toast.error('Failed to load expenses')
     }
   }, [roomId])
 
@@ -48,6 +54,24 @@ function Expenses() {
       fetchExpenses()
     }
   }, [roomId, fetchRoomMembers, fetchExpenses])
+
+  // Warn before closing/reloading the tab with unsaved changes
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault()
+      }
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [isDirty])
+
+  // Recompute balances whenever expenses change while the sheet is open
+  useEffect(() => {
+    if (isBalanceSheetOpen) {
+      setNetTransactions(calculateTransactionsFromExpenses(expenses))
+    }
+  }, [expenses, isBalanceSheetOpen])
 
   const handleOpenBalanceSheet = () => {
     const transactions = calculateTransactionsFromExpenses(expenses)
@@ -96,12 +120,13 @@ function Expenses() {
     try {
       if (!roomId) return
       await saveExpenseStates(roomId, [payload])
-      const updatedExpenses = expenses.map((exp) =>
-        exp.id === expenseId
-          ? { ...exp, splits: updatedSplits, transaction_complete: allCompleted }
-          : exp,
+      setExpenses((prev) =>
+        prev.map((exp) =>
+          exp.id === expenseId
+            ? { ...exp, splits: updatedSplits, transaction_complete: allCompleted }
+            : exp,
+        ),
       )
-      setExpenses(updatedExpenses)
       handleCloseEditModal()
       toast.success('Expense updated')
     } catch (error) {
@@ -113,42 +138,53 @@ function Expenses() {
   const handleTransactionComplete = (transactionPair: [string, string]) => {
     const [from, to] = transactionPair
 
-    const updatedExpenses = expenses.map((expense) => {
-      const updatedSplits = expense.splits.map((split) => {
-        if (
-          expense.paid_by_username === to &&
-          split.user_username === from &&
-          split.is_paid === false
-        ) {
-          return { ...split, is_paid: true }
-        }
+    setExpenses((prev) =>
+      prev.map((expense) => {
+        const updatedSplits = expense.splits.map((split) => {
+          if (
+            expense.paid_by_username === to &&
+            split.user_username === from &&
+            split.is_paid === false
+          ) {
+            return { ...split, is_paid: true }
+          }
 
-        if (
-          expense.paid_by_username === from &&
-          split.user_username === to &&
-          split.is_paid === false
-        ) {
-          return { ...split, is_paid: true }
-        }
+          if (
+            expense.paid_by_username === from &&
+            split.user_username === to &&
+            split.is_paid === false
+          ) {
+            return { ...split, is_paid: true }
+          }
 
-        return split
-      })
+          return split
+        })
 
-      return { ...expense, splits: updatedSplits }
-    })
+        return { ...expense, splits: updatedSplits }
+      }),
+    )
 
-    setExpenses(updatedExpenses)
-
-    const newTransactions = calculateTransactionsFromExpenses(updatedExpenses)
-    setNetTransactions(newTransactions)
+    setIsDirty(true)
   }
 
   const handleAddExpense = (newExpense: Expense) => {
-    setExpenses([...expenses, newExpense])
+    setExpenses((prev) => [...prev, newExpense])
   }
 
+  // Local-only mutations (skip toggle / mark-paid checkbox) -> unsaved
   const handleExpensesUpdate = (updatedExpenses: Expense[]) => {
     setExpenses(updatedExpenses)
+    setIsDirty(true)
+  }
+
+  // Server-persisted mutations (delete) -> update state without marking dirty
+  const handleExpensesPersisted = (updatedExpenses: Expense[]) => {
+    setExpenses(updatedExpenses)
+  }
+
+  // "Save Changes" success -> clear the dirty flag
+  const handleSaved = () => {
+    setIsDirty(false)
   }
 
   return (
@@ -193,7 +229,10 @@ function Expenses() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <ExpenseList
             expenses={expenses}
+            isDirty={isDirty}
             onExpensesUpdate={handleExpensesUpdate}
+            onExpensesPersisted={handleExpensesPersisted}
+            onSaved={handleSaved}
             onOpenBalanceSheet={handleOpenBalanceSheet}
             onOpenEditModal={handleOpenEditModal}
           />
@@ -213,6 +252,13 @@ function Expenses() {
               onClose={handleCloseEditModal}
               onSave={handleSaveExpenseAmounts}
               initialSkipUserId={initialSkipUserId}
+            />
+          )}
+
+          {blocker.state === 'blocked' && (
+            <UnsavedChangesDialog
+              onLeave={() => blocker.proceed()}
+              onStay={() => blocker.reset()}
             />
           )}
         </div>
